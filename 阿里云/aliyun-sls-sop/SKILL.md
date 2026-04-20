@@ -1,33 +1,48 @@
 ---
 name: aliyun-sls-sop
-description: 根据仓库既有规范、同级目录文档、模板和阿里云 SLS/CSV/CSV.GZ 等结构化日志生成或更新文档。用于创建或维护 SOP、runbook、README、overview.yaml、datasource 配置、报告模板、审计报告、巡检清单等业务/运维/安全文档；尤其适用于用户提供日志样本、要求与同目录文档对齐、使用“分析 某某 环境 某某 最近的事件”这类固定话术，或需要从日志动态抽取事实而不是硬编码样例对象，并希望自动生成一套模块文档骨架的场景。
+description: 根据仓库既有规范、同级目录文档、模板和阿里云 SLS project、本地抓取目录、CSV/CSV.GZ 等结构化日志工件生成或更新文档。可用于从 index/dashboard/alert/scheduled_sql/saved_search 抽取 SLS 资产，生成 overview.md 或 SKILL.md，也可继续沉淀成 README、overview.yaml、datasource 配置、analysis_sop、report_template、审计报告、巡检清单等仓库模块文档。
 ---
 
 # 阿里云 SLS SOP
 
 ## 快速开始
 
-1. 先读取目标目录的同级文档。
-   如果没有同级先例，默认采用脚本输出的便携命名，不偷带当前仓库里的目录名。
-2. 如果用户提供了 CSV 或 CSV.GZ 日志样本，先执行 `python3 scripts/profile_csv.py <csv-path>`。
-3. 如果用户要快速落一套模块骨架，执行 `python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>`。
-4. 在判断环境、范围和哪些事实可固化之前，先读 [references/intake-patterns.md](references/intake-patterns.md)。
-5. 在决定日志家族和默认命名之前，读 [references/log-families.md](references/log-families.md)。
-   这是 skill 内部用的“日志类型到文档模板的路由表”，不是给最终使用者单独阅读的手册。
-6. 在决定生成哪些文件、每个文件写什么之前，先读 [references/doc-types.md](references/doc-types.md)。
-7. 在收尾自检前，按 [references/output-contracts.md](references/output-contracts.md) 对照检查。
+1. 先读取目标目录的同级文档。如果用户要求“和现有目录对齐”，同级文件是第一约束。
+2. 先按 [references/intake-patterns.md](references/intake-patterns.md) 识别输入模式和环境。
+3. 如果输入是 SLS project、本地 project/logstore 目录、index/dashboard/alert/scheduled_sql/saved_search 资源，或用户说“继续上次生成”，先读 [references/sls-project-workflow.md](references/sls-project-workflow.md)。
+4. 如果用户提供 CSV 或 CSV.GZ 日志样本，先执行 `python3 scripts/profile_csv.py <csv-path>`；需要快速起骨架时再执行 `python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>`。
+5. 在决定最终产物前，先读 [references/output-modes.md](references/output-modes.md) 和 [references/doc-types.md](references/doc-types.md)。
+6. 在判断日志家族和默认命名之前，读 [references/log-families.md](references/log-families.md)。
+7. 收尾前按 [references/output-contracts.md](references/output-contracts.md) 对照检查。
 
-## 按这个流程执行
+## 先路由任务
 
-### 1. 先把请求解析成“文档任务”
+### 模式 A：仓库文档套件模式
 
-- 抽取 `environment`、`system/product`、`time range`、`artifact type`、`document type`、`analysis direction`。
-- 把 `分析 某某 环境 某某 最近的事件` 这类输入当作结构化入口，而不是普通自由文本。
-- 如果用户要求“目录结构和同目录其它文档对齐”，先看同级文件，再镜像它们的文件集合和命名方式。
-- 如果用户说“继续做某类日志的 SOP”，默认补齐该目录下同类型模块常见的整套文档，除非仓库已有更小的固定模式。
-- 当前仓库里的 `waf`、`nat`、`slsaudit-center` 等目录只属于写法参考源，不属于 skill 的固定输出结构。
+- 适用于“目录结构对齐”“补齐整套文档”“沉淀 SOP 模块”“生成 README、overview.yaml、datasource、analysis_sop、report_template”这类请求。
+- 先抽取 `environment`、`system/product`、`time range`、`artifact type`、`document type`、`analysis direction`。
+- 把 `分析 某某 环境 某某 最近的事件` 这类输入当成结构化入口，而不是普通自由文本。
+- 如果用户说“继续做某类日志的 SOP”，默认补齐目标目录下同类型模块常见的整套文档，除非仓库已有更小的固定模式。
+- 当前仓库里的 `waf`、`nat`、`slsaudit-center` 等目录只属于写法参考源，不属于固定输出结构。
 
-### 2. 正确识别环境，不要写死
+### 模式 B：SLS 资源流水线模式
+
+- 适用于用户直接给出 SLS project、本地抓取目录、单个 logstore 目录，或者明确要求“从 index/dashboard/alert/scheduled_sql/saved_search 生成 SOP / SKILL / overview”。
+- 这个模式先走 project 级数据抓取、预处理、精选、模板归一化、可选验证、断点恢复和审计，再决定最终落成 overview.md、SKILL.md 或仓库文档套件。
+- 详细步骤和命令都在 [references/sls-project-workflow.md](references/sls-project-workflow.md)；执行时按需读取 `rules/*.md`。
+
+### 特殊组合：Project 索引 + 模块五件套
+
+- 如果用户同时要 project 级索引和 leaf 五件套，不要让他二选一。
+- 默认结构是：
+  - 根目录 `SOP.md`
+  - project 目录 `overview.md`
+  - 每个 module 目录下的 `README.md`、`overview.yaml`、`*_datasources.yaml`、`*_analysis_sop.yaml`、`*_report_template.md`
+- 这种情况下，project `overview.md` 默认链接到各 module 的 `README.md`。
+
+## 模式 A：仓库文档套件模式
+
+### 1. 正确识别环境，不要写死
 
 - 先用用户输入。
 - 再用 datasource 元数据或文件元数据。
@@ -35,24 +50,24 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 - 不要把当前仓库环境默认成通用事实。
 - 如果仓库是 UAT，但用户要的是 PROD 或其它环境，文档结构要保持可复用，不能把 UAT 专有标识泄漏进新文档。
 
-### 3. 从日志和工件里抽事实，不要硬编码
+### 2. 从日志和工件里抽事实，不要硬编码
 
 - 如果有 CSV，先用 `scripts/profile_csv.py` 做字段画像。
 - 如果需要快速起一套骨架，再用 `scripts/generate_scaffold.py` 输出初稿。
-- 区分**稳定事实**和**运行时事实**。
+- 区分稳定事实和运行时事实。
 - 只有稳定事实才能写入 datasource 这类配置型文档。
 - 样本里的对象名、设备名、bucket 名、IP、表名、request id 等，默认都当动态事实处理，除非用户明确确认它们是长期稳定值。
 - 除非用户明确要求，否则不要把样例文件名写进永久 SOP。
 - 如果没有现成目录风格可以对齐，优先生成可独立迁移的便携骨架，而不是复刻当前仓库里的模块名。
 
-### 4. 同时覆盖业务、运维、安全三个方向
+### 3. 同时覆盖业务、运维、安全三个方向
 
 - 默认同时考虑 `business`、`ops`、`security`。
 - 根据当前日志字段决定哪个方向是主线。
 - 如果某个方向的结论缺少字段支撑，要直接说明，并指出还需要什么数据。
 - 如果字段模式能稳定命中某个日志家族，就优先使用对应家族的默认文档套件和主线。
 
-### 5. 生成正确的文档集合
+### 4. 生成正确的文档集合
 
 - 如果是仓库级文档套件，按 [references/doc-types.md](references/doc-types.md) 的职责划分生成。
 - 如果用户只要一个文件，只改那一个文件。
@@ -64,7 +79,7 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
   - `*_report_template.md`
 - 只有当用户明确要求“和现有目录对齐”时，才借用目标仓库同级文件的命名和章节分工。
 
-### 6. 收尾前做质量检查
+### 5. 收尾前做质量检查
 
 - 文件命名、语气和职责要和同级文档一致。
 - 输出必须能跨环境复用。
@@ -73,6 +88,42 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 - SOP 必须包含触发条件、执行步骤、判断标准、升级路径、记录要求。
 - 报告模板必须覆盖 SOP 承诺的输出结果。
 - README 和 overview 必须把读者路由到下一个正确文件。
+
+## 模式 B：SLS 资源流水线模式
+
+- 这个模式已经吸收 `generate-sls-sop` 的 fetch、prepare、select、normalize、validate、resume、audit 能力。
+- 入口判断、Phase A/B/C/D、状态恢复、输出路径确认、质量审计，统一按 [references/sls-project-workflow.md](references/sls-project-workflow.md) 执行。
+- 运行期主要脚本包括：
+  - `scripts/fetch_sls_data.py`
+  - `scripts/save_options.py`
+  - `scripts/prepare_project.py`
+  - `scripts/save_selections.py`
+  - `scripts/update_status.py`
+  - `scripts/build_pipeline.py`
+  - `scripts/normalize_templates.py`
+  - `scripts/prepare_validation.py`
+  - `scripts/validate_queries.py`
+  - `scripts/apply_validation.py`
+  - `scripts/render_fields.py`
+  - `scripts/render_queries.py`
+  - `scripts/assemble_overview.py`
+  - `scripts/prepare_audit.py`
+  - `scripts/finalize_audit.py`
+  - `scripts/aggregate_audit.py`
+
+## 让流水线结果服务仓库文档
+
+- 如果用户明确要 `overview.md`、`SOP.md` 或 `SKILL.md`，按流水线的原始输出方式交付即可。
+- 如果用户同时要求“对齐当前仓库”或“补齐五件套”，不要停在 overview.md。先跑完流水线的抽取和整理步骤，再把产物折叠成仓库模块文档。
+- 如果用户还明确要求 project 级索引，则采用“Project 索引 + 模块五件套”混合模式，而不是纯五件套模式。
+- 生成仓库文档时，优先使用这些流水线产物做事实源：
+  - `project_summary.json`、`data_summary.md`：项目级范围、候选 logstore、来源分布、处理摘要。
+  - `parsed/fields.json`、`fragments/fields_table.md`：字段语义、字段别名、嵌套字段约束。
+  - `fragments/datasource.md`、`skill_options.json`：数据源定位、输出路径、运行方式。
+  - `parsed/query_pipeline.json`、`fragments/queries_selected.md`、`parsed/query_report.md`：可复用查询、分类、保底查询、来源覆盖和验证结果。
+  - `_audit/`：质量问题、风险分布和后续修正线索。
+- 在仓库模式下，`overview.md` 或 `SKILL.md` 可以作为中间成果或参考，不要求它们成为最终唯一交付物。
+- 无论来自 CSV 还是 SLS project，都继续遵守稳定事实 / 动态事实边界。
 
 ## 使用 CSV 画像脚本
 
@@ -159,9 +210,12 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 ## 配套参考文件
 
 - 在判断环境、提炼话术模式、约束硬编码边界时，读 [references/intake-patterns.md](references/intake-patterns.md)。
+- 在选择最终产物是 overview、SKILL 还是仓库五件套时，读 [references/output-modes.md](references/output-modes.md)。
+- 在输入是 SLS project、本地抓取目录或需要断点续跑时，读 [references/sls-project-workflow.md](references/sls-project-workflow.md)。
 - 在选择日志家族、模块目录、默认命名时，读 [references/log-families.md](references/log-families.md)。
 - 在决定生成哪些文件、每个文件写什么时，读 [references/doc-types.md](references/doc-types.md)。
 - 在检查输出是否达标时，读 [references/output-contracts.md](references/output-contracts.md)。
+- 在执行流水线细节时，按需读取 `rules/naming_rules.md`、`rules/field_desc.md`、`rules/query_select.md`、`rules/query_verify.md`、`rules/query_format.md`、`rules/index_rules.md`、`rules/audit_rules.md`、`rules/troubleshooting.md`。
 
 ## 典型触发语句
 
@@ -170,4 +224,12 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 - `继续做某个日志类型的 sop，目录结构和同目录其它日志对齐`
 - `分析 PROD 某系统 最近的事件，并沉淀成 SOP`
 - `补齐 README、overview、datasource、analysis_sop、report_template`
+- `保留 project 级索引，同时每个 logstore 输出 README、overview.yaml、datasource、analysis_sop、report_template`
 - `把这份日志样本抽象成通用文档，不要硬编码样本里的对象`
+- `帮我生成 <project-name> 的 SOP 文档`
+- `帮我从 .input/my-project/ 生成 SOP`
+- `帮我从某个 logstore 目录生成 overview`
+- `帮我生成 <project-name> 的 SKILL 文档`
+- `继续上次的 SOP 生成`
+- `帮我生成 SOP，并验证 query 语法`
+- `对已生成的 SOP 做质量审计`

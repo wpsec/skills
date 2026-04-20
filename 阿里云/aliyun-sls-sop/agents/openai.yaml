@@ -1,4 +1,4 @@
 interface:
   display_name: "阿里云 SLS SOP"
-  short_description: "根据阿里云 SLS 日志生成可独立迁移的 SOP、报告与模块文档骨架"
-  default_prompt: "使用 $aliyun-sls-sop，基于我提供的 SLS CSV 或 CSV.GZ 日志样本生成一套可独立迁移的 SOP/文档骨架；如果我指定了现有目录风格，再按目标目录对齐。"
+  short_description: "根据 SLS project、本地输入目录或 CSV 样本生成 SOP、SKILL 与仓库模块文档"
+  default_prompt: "使用 $aliyun-sls-sop，基于我提供的 SLS project、本地抓取目录或 CSV/CSV.GZ 日志样本生成文档；如果我要求对齐现有目录，就落成 README、overview.yaml、datasource、analysis_sop、report_template，否则按需要生成 SOP/overview.md 或 SKILL.md。"

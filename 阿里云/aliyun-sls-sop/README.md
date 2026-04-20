@@ -1,88 +1,78 @@
 # aliyun-sls-sop
 
-用于把阿里云 SLS 结构化日志样本和现有目录规范沉淀成可复用文档，而不是一次性分析说明。适合生成或维护 SOP、README、`overview.yaml`、datasource 配置、报告模板以及相关运维或安全文档。
+统一处理阿里云 SLS 文档生成的 skill。
+
+它已经同时覆盖两类能力：
+
+- 仓库文档模式：根据 CSV、CSV.GZ、现有目录规范和固定话术，生成或维护 `README.md`、`overview.yaml`、`*_datasources.yaml`、`*_analysis_sop.yaml`、`*_report_template.md`。
+- SLS 资源流水线模式：根据 SLS project、本地抓取目录或单个 logstore 目录，抽取 index、dashboard、alert、scheduled_sql、saved_search，生成 `overview.md` / `SKILL.md`，并支持断点续跑、查询验证、审计。
+
+两者也可以组合：
+
+- 保留根目录 `SOP.md` 和 project `overview.md`
+- 同时把每个 leaf logstore 落成五件套模块目录
 
 ## 适用场景
 
-- 用户提供 CSV 或 CSV.GZ 日志样本，希望快速生成一套模块骨架。
-- 用户要求“和同目录其它文档对齐”，需要补齐 README、SOP、datasource、report template。
-- 用户希望基于“分析某环境最近事件”这类固定话术，将结果沉淀为后续可复用文档。
-- 用户明确要求避免把样本中的对象名、IP、实例 ID 等动态值写死进永久文档。
+- 用户提供 CSV 或 CSV.GZ 样本，希望快速起一套可复用模块骨架。
+- 用户要求“和同目录其它文档对齐”，需要补齐 README、overview、datasource、analysis_sop、report_template。
+- 用户直接给 SLS project 名称，希望从线上资源生成 SOP 或 SKILL。
+- 用户提供 `.input/<project>/` 这类标准化输入目录，希望从本地数据生成 SOP 或 SKILL。
+- 用户既要 project 级索引，又要每个 logstore 输出五件套模块文档。
+- 用户需要恢复上次中断的生成任务，或者对已生成结果做质量审计。
 
-## 阿里云 SLS
+## 目录结构
 
-<!-- 这是一张图片，ocr 内容为： -->
-
-![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1776158679662-6a8921af-6e8a-4d84-9c05-7c12c5ba0e8e.png)
-
-<!-- 这是一张图片，ocr 内容为： -->
-
-![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1776163411293-f22bc128-683f-4ff2-b690-fdb91ef23b41.png)
-
-<!-- 这是一张图片，ocr 内容为： -->
-
-![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1776158762591-794af861-3b5c-4fa4-84f9-fe9c0bed7f27.png)
-
-<!-- 这是一张图片，ocr 内容为： -->
-
-![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1776163447539-5e34c1a6-7708-41b1-86ed-0ae7f9e75fd2.png)
-
-<!-- 这是一张图片，ocr 内容为： -->
-
-![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1776163252348-2988ca2e-c560-4198-95f0-777238ca8e98.png)
-
-<!-- 这是一张图片，ocr 内容为： -->
-
-![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1776163289229-971ccaa4-971d-4095-a92d-8e0e2af7d8b1.png)
-
-<!-- 这是一张图片，ocr 内容为： -->
-
-![](https://cdn.nlark.com/yuque/0/2026/png/27875807/1776163498750-74a0175c-4264-4ce1-a79a-8a1c5c1911b1.png)
-
-## 文件清单
-
-- `SKILL.md`：执行入口，定义判断流程、生成策略和收尾检查。
-- `references/intake-patterns.md`：约束请求解析、环境识别和硬编码边界。
-- `references/log-families.md`：日志家族识别与默认文档路由规则。
-- `references/doc-types.md`：文档套件职责划分与最小输出集合。
-- `references/output-contracts.md`：最终结果的最低质量标准。
-- `scripts/profile_csv.py`：对 CSV 或 CSV.GZ 做字段画像，帮助识别时间、身份、动作、状态和对象字段。
-- `scripts/generate_scaffold.py`：根据日志样本输出一套可继续细化的模块文档骨架。
-- `agents/openai.yaml`：相关 agent 配置。
+- `SKILL.md`：统一入口，负责模式路由、输出选择和收尾约束。
+- `references/intake-patterns.md`：输入解析、环境识别、硬编码边界。
+- `references/output-modes.md`：四种输出模式的路由规则和相互映射。
+- `references/sls-project-workflow.md`：SLS project / 本地输入目录的完整流水线。
+- `references/log-families.md`：日志家族识别与默认模板路由。
+- `references/doc-types.md`：仓库五件套与索引型单文档的职责定义。
+- `references/output-contracts.md`：最低质量标准。
+- `rules/`：字段说明、查询精选、查询验证、索引更新、审计、排障等细则。
+- `scripts/profile_csv.py`、`scripts/generate_scaffold.py`：CSV 模式下的画像和骨架生成。
+- `scripts/fetch_sls_data.py` 到 `scripts/aggregate_audit.py`：吸收自 `generate-sls-sop` 的 project 级流水线能力。
+- `scripts/tests/`：流水线脚本单测。
+- `evals/`：评测清单和 fixtures。
+- `agents/openai.yaml`：agent UI 元数据。
 
 ## 推荐阅读顺序
 
-1. 先读 `SKILL.md`，明确这个 skill 处理什么问题。
-2. 如果输入是日志样本，执行 `scripts/profile_csv.py` 做字段画像。
-3. 如果要快速起骨架，执行 `scripts/generate_scaffold.py`。
-4. 生成前分别参考 `intake-patterns.md`、`log-families.md`、`doc-types.md`。
-5. 收尾时对照 `output-contracts.md` 自检。
+1. 先读 `SKILL.md`，确定当前请求属于哪种模式。
+2. 读 `references/intake-patterns.md`，确认输入类型和环境。
+3. 读 `references/output-modes.md`，确认最终产物是五件套、SOP 还是 SKILL。
+4. 如果输入是 SLS project 或本地抓取目录，继续读 `references/sls-project-workflow.md`。
+5. 如果输入是 CSV，执行 `scripts/profile_csv.py`；需要骨架时执行 `scripts/generate_scaffold.py`。
+6. 生成前按需读 `references/log-families.md`、`references/doc-types.md` 和 `rules/*.md`。
+7. 收尾时对照 `references/output-contracts.md` 自检。
 
-## 使用示例
+## 常用命令
 
 ```bash
 python3 scripts/profile_csv.py /path/to/sample.csv
 python3 scripts/profile_csv.py /path/to/sample.csv.gz
 python3 scripts/generate_scaffold.py /path/to/sample.csv --out-dir /path/to/module
+python3 scripts/prepare_project.py .input/my-project
+python3 scripts/update_status.py .input/my-project --resume-check
+python3 scripts/prepare_audit.py .input/my-project --mode sample
 ```
 
-## 输出约束
+## 输出原则
 
-- README 负责人工导航，不承载详细 SOP 流程。
-- `overview.yaml` 只做导航和任务路由，不复制整套 SOP。
-- datasource 文件只保留稳定环境映射与运行时解析规则。
-- SOP 文件必须包含触发条件、执行步骤、判断标准、升级路径、记录要求。
-- report template 必须覆盖 SOP 承诺的输出结果。
-
-## 样本使用约束
-
-- 默认区分稳定事实和动态事实。
-- 样本中的 bucket、object、设备名、主机名、IP、实例 ID、request id、导出文件名等，不应直接写成永久规则。
-- 如果环境无法稳定识别，应输出可迁移的通用骨架，而不是借用当前仓库的偶然命名。
+- 默认区分稳定事实和动态事实，不把样本热点值直接写死进永久文档。
+- 如果用户要仓库模块文档，优先交付五件套，不用 overview.md 代替全部产物。
+- 如果用户既要 project 级索引又要模块文档，保留 `SOP.md` 与 project `overview.md`，leaf 默认以 `README.md` 作为入口。
+- 如果用户明确要 `overview.md` 或 `SKILL.md`，可以直接按索引型单文档结构交付。
+- 如果输入来自 SLS project，但用户最终要仓库文档，先走 project 级流水线，再把产物折叠成五件套。
 
 ## 建议提问方式
 
 - `根据这份 CSV 日志生成一套对齐现有目录的 SOP`
-- `根据这份 CSV.GZ 日志样本生成一套模块骨架`
 - `补齐 README、overview、datasource、analysis_sop、report_template`
-- `分析 PROD 某系统 最近的事件，并沉淀成 SOP`
+- `帮我生成 <project-name> 的 SOP 文档`
+- `保留 project 级索引，同时每个 logstore 输出 README、overview.yaml、datasource、analysis_sop、report_template`
+- `帮我从 .input/my-project/ 生成 SKILL`
+- `继续上次的 SOP 生成`
+- `帮我生成 SOP，并验证 query 语法`
+- `对已生成的 SOP 做质量审计`

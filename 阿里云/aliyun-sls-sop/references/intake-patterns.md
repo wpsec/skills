@@ -44,6 +44,28 @@
 - 动态维度的证据来源
 - 不是把样本值硬编码进正式文档的许可
 
+### 模式 D
+
+`帮我生成 <project-name> 的 SOP` / `帮我从 .input/<project>/ 生成 SKILL`
+
+把它理解成：
+
+- 输入源优先是 SLS project 或标准化抓取目录
+- 默认要走 project 级流水线，而不是只看单个样本
+- 需要从 index、dashboard、alert、scheduled_sql、saved_search 中抽取稳定事实
+- 输出可能是 `overview.md`、`SOP.md`、`SKILL.md`，也可能继续折叠成仓库五件套
+
+### 模式 E
+
+`继续上次的 SOP 生成` / `继续上次的 SKILL 生成`
+
+把它理解成：
+
+- 优先寻找已有 `<project_dir>`
+- 先跑恢复检测，不要从头重做
+- 已完成的 logstore 不重复生成
+- 先判断是继续 Phase B、Phase C 还是 Phase D
+
 ## 2. 环境识别顺序
 
 优先级如下：
@@ -152,4 +174,6 @@
 ## 6. 推荐联动文件
 
 - 需要按日志家族选择模板时，读 `references/log-families.md`
+- 需要判断最终产物时，读 `references/output-modes.md`
+- 需要从 SLS project 或本地目录走完整流水线时，读 `references/sls-project-workflow.md`
 - 需要检查输出是否合格时，读 `references/output-contracts.md`

@@ -2,6 +2,8 @@
 
 本文件约束 `aliyun-sls-sop` 生成结果的最小质量标准，避免只输出“像文档”的文本，但缺少后续可维护性。
 
+如果当前输出是 `overview.md` 或 `SKILL.md`，先按 `references/output-modes.md` 和 `rules/*.md` 执行，再回到这里检查可复用边界。
+
 ## 1. 模块文档套件的最低要求
 
 当用户要求“目录结构对齐”“补齐整套文档”“沉淀 SOP 模块”时，默认至少输出：
@@ -13,6 +15,11 @@
 - `*_report_template.md`
 
 如果用户明确只要其中一个文件，才允许减少输出范围。
+
+如果用户还明确要求保留 project 级索引，则在以上五件套之外，再额外输出：
+
+- 根目录 `SOP.md`
+- project 目录 `overview.md`
 
 ## 2. 每个文件必须承担单一职责
 
@@ -84,6 +91,23 @@
 - 关键发现
 - 研判与影响评估
 - 处置建议
+
+### `SOP.md`
+
+必须包含：
+
+- project 级目录表
+- 每个 project 的简短描述
+- 指向 project `overview.md` 的稳定链接
+
+### project `overview.md`
+
+必须包含：
+
+- project 简述
+- module 清单
+- 指向各 module `README.md` 的稳定链接
+- 不要把 leaf 级 SOP 全量复制进这个索引文件
 
 ## 3. 稳定事实与动态事实边界
 

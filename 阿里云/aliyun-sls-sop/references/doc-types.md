@@ -74,6 +74,23 @@
 
 它必须和 SOP 承诺的输出保持一致。
 
+## Project 索引 + 模块五件套
+
+当用户既要 project 级导航，又要每个 logstore 落成模块五件套时，用这套混合结构。
+
+目录关系：
+
+- 根目录保留 `SOP.md`
+- project 目录保留 `overview.md`
+- 每个 leaf module 目录内放五件套
+
+约束：
+
+- `SOP.md` 负责 project 级入口，不承载 leaf 细节
+- project `overview.md` 负责列出 module，并默认链接到各 module 的 `README.md`
+- module `README.md` 是 leaf 入口页，负责把读者再路由到 `overview.yaml`、`*_datasources.yaml`、`*_analysis_sop.yaml`、`*_report_template.md`
+- 不要求 leaf 再额外保留 `overview.md`，除非用户明确要求
+
 ## 其它常见文档
 
 ### Runbook / 事件处置手册
@@ -114,6 +131,34 @@
 - 结果
 - 跟进动作
 
+## 索引型单文档输出
+
+当用户明确要求 `overview.md`、`SOP.md` 或 `SKILL.md` 时，用这类结构，而不是仓库五件套。
+
+### `SOP.md` / `overview.md`
+
+应包含：
+
+- frontmatter 或清晰标题
+- 使用说明
+- 数据源
+- 字段参考
+- 查询示例
+- 必要时指向 `queries_extra.md`
+
+### `SKILL.md`
+
+应包含：
+
+- frontmatter
+- 使用说明
+- 数据源
+- 字段参考
+- 查询示例
+- 适合 agent 直接消费的简短定位说明
+
+这类输出通常来自 SLS 资源流水线，详细步骤读 `references/sls-project-workflow.md`。
+
 ## 输出规则
 
 - 如果仓库已有命名模式，优先复用同级文件名。
@@ -121,3 +166,4 @@
 - 不要围绕文档套件再额外生成说明性质的杂项文件。
 - 每个文件只负责一层：导航、配置、SOP、模板或人工说明。
 - 如果仓库里没有先例，优先使用轻量的五件套，而不是铺开很多文件。
+- 如果输入是 SLS project 或标准化抓取目录，允许先跑 project 级流水线，再把结果折叠成对应输出模式。
