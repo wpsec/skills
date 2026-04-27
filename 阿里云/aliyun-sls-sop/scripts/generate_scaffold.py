@@ -389,7 +389,8 @@ def render_analysis_sop(summary: dict, docs: dict[str, str], spec: dict, owner: 
         "report_writing_rules:\n"
         f"  - {yaml_quote('必须明确问题类型、时间范围、关键对象和关键证据。')}\n"
         f"  - {yaml_quote('必须明确哪些结论已证实、哪些仍待确认。')}\n"
-        f"  - {yaml_quote('若字段不足以支撑某个判断，必须在报告中显式说明。')}\n\n"
+        f"  - {yaml_quote('若字段不足以支撑某个判断，必须在报告中显式说明。')}\n"
+        f"  - {yaml_quote('必须包含根本原因分析数据流图，串联触发事实、主事实源、候选根因、补证、定性和处置闭环。')}\n\n"
         f"report_template_file: {yaml_quote(docs['report_template'])}\n"
     )
 
@@ -422,35 +423,51 @@ def render_report_template(spec: dict) -> str:
         | 主要来源 / 目标 | <填写> | <填写> |
         | 主要体量 / 指标 | <填写> | <填写> |
 
-        ## 3. 关键发现
+        ## 3. 根本原因分析数据流图
 
-        ### 3.1 异常对象 / 可疑行为
+        ```mermaid
+        flowchart LR
+          trigger["触发事实 / 告警 / 样本线索"] --> source["主事实源"]
+          source --> symptom["症状确认"]
+          symptom --> cause_a["候选根因 A"]
+          symptom --> cause_b["候选根因 B"]
+          symptom --> cause_c["候选根因 C"]
+          cause_a --> evidence["补证：字段聚合 / 时间线 / 关联对象"]
+          cause_b --> evidence
+          cause_c --> evidence
+          evidence --> conclusion["根本原因定性与影响评估"]
+          conclusion --> closure["处置闭环 / 规则沉淀"]
+        ```
+
+        ## 4. 关键发现
+
+        ### 4.1 异常对象 / 可疑行为
 
         | 时间 | 对象 | 动作/状态 | 关键字段 | 说明 |
         | --- | --- | --- | --- | --- |
         | <填写> | <填写> | <填写> | <填写> | <填写> |
 
-        ### 3.2 根因排查
+        ### 4.2 根因排查
 
         - 关键证据：<填写>
         - 归因判断：<填写>
         - 根因状态：<已证实 / 高概率 / 待确认>
 
-        ### 3.3 影响面
+        ### 4.3 影响面
 
         - 影响范围：<填写>
         - 业务影响：<填写>
         - 运维影响：<填写>
         - 安全影响：<填写>
 
-        ## 4. 研判与评估
+        ## 5. 研判与评估
 
         - **问题归类**：<填写>
         - **风险等级**：< Critical / High / Medium / Low / Safe >
         - **影响等级**：< Critical / High / Medium / Low / Safe >
         - **核心结论**：<填写>
 
-        ## 5. 处置建议
+        ## 6. 处置建议
 
         - **立即动作**：<填写>
         - **后续核查**：<填写>

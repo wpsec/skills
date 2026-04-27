@@ -116,7 +116,7 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 - 样本推导值在未确认稳定前，不能进入永久规则。
 - 输出结果必须满足 [references/output-contracts.md](references/output-contracts.md) 的最低要求。
 - SOP 必须包含触发条件、执行步骤、判断标准、升级路径、记录要求。
-- 报告模板必须覆盖 SOP 承诺的输出结果。
+- 报告模板必须覆盖 SOP 承诺的输出结果，并包含根本原因分析数据流图。
 - README 和 overview 必须把读者路由到下一个正确文件。
 
 ## 模式 B：SLS 资源流水线模式
@@ -234,7 +234,7 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 - `overview.yaml` 默认负责导航和路由；如果用户要求可执行 contract，可在保留可读内容的前提下叠加机器可执行字段。
 - datasource 文件是稳定环境映射的唯一事实源。
 - SOP 文件只放固定流程和判断规则。
-- report template 必须和 SOP 输出对齐。
+- report template 必须和 SOP 输出对齐，并包含根本原因分析数据流图。
 - workflow / module / datasource / correlation contract 负责让 agent 能稳定执行步骤、判断跳转和串联数据源。
 
 ### 针对其它文档类型
