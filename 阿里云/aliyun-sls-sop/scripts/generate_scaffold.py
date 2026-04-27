@@ -390,7 +390,7 @@ def render_analysis_sop(summary: dict, docs: dict[str, str], spec: dict, owner: 
         f"  - {yaml_quote('必须明确问题类型、时间范围、关键对象和关键证据。')}\n"
         f"  - {yaml_quote('必须明确哪些结论已证实、哪些仍待确认。')}\n"
         f"  - {yaml_quote('若字段不足以支撑某个判断，必须在报告中显式说明。')}\n"
-        f"  - {yaml_quote('必须包含根本原因分析数据流图，串联触发事实、主事实源、候选根因、补证、定性和处置闭环。')}\n\n"
+        f"  - {yaml_quote('必须包含钉钉兼容的根本原因分析 ASCII 数据流图，使用 text 代码块串联触发事实、主事实源、候选根因、补证、定性和处置闭环，禁止 Mermaid。')}\n\n"
         f"report_template_file: {yaml_quote(docs['report_template'])}\n"
     )
 
@@ -425,18 +425,25 @@ def render_report_template(spec: dict) -> str:
 
         ## 3. 根本原因分析数据流图
 
-        ```mermaid
-        flowchart LR
-          trigger["触发事实 / 告警 / 样本线索"] --> source["主事实源"]
-          source --> symptom["症状确认"]
-          symptom --> cause_a["候选根因 A"]
-          symptom --> cause_b["候选根因 B"]
-          symptom --> cause_c["候选根因 C"]
-          cause_a --> evidence["补证：字段聚合 / 时间线 / 关联对象"]
-          cause_b --> evidence
-          cause_c --> evidence
-          evidence --> conclusion["根本原因定性与影响评估"]
-          conclusion --> closure["处置闭环 / 规则沉淀"]
+        ```text
+        ┌──────────────────────────────────────────────┐
+        │        根本原因分析因果链（钉钉兼容）        │
+        ├──────────────────────────────────────────────┤
+        │ direct_trigger：<告警 / 阈值 / 状态码 / reason> │
+        │ └─ 主事实源：<source_alias / project / logstore> │
+        │    └─ 症状确认：<错误 / 超时 / 事件 / 指标>      │
+        │                                                  │
+        │ 候选根因 1：<应用 / 配置 / 策略 / 依赖>          │
+        │ ├─ root_cause_evidence：<日志 / 指标 / 配置 / 变更> │
+        │ └─ root_cause_evidence_status：<confirmed / evidence_insufficient / needs_handoff> │
+        │                                                  │
+        │ 候选根因 2：<资源 / 容量 / 网络 / 下游>          │
+        │ ├─ root_cause_evidence：<时间线 / 聚合 / 关联对象> │
+        │ └─ root_cause_evidence_status：<confirmed / evidence_insufficient / needs_handoff> │
+        │                                                  │
+        │ 根因定性：<结论；证据不足时写“根因待确认”>      │
+        │ └─ 处置闭环：<修复 / 隔离 / 联动 / 规则沉淀>     │
+        └──────────────────────────────────────────────┘
         ```
 
         ## 4. 关键发现
