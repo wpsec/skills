@@ -48,6 +48,14 @@
 
 - 把整套 SOP 细节复制进 `overview.yaml`
 
+如果目标仓库采用可执行 contract，还必须额外包含：
+
+- `schema`
+- `schema_reference`
+- `module_id`
+- `entry_hints`
+- `execution`
+
 ### `*_datasources.yaml`
 
 必须包含：
@@ -109,7 +117,72 @@
 - 指向各 module `README.md` 的稳定链接
 - 不要把 leaf 级 SOP 全量复制进这个索引文件
 
-## 3. 稳定事实与动态事实边界
+## 3. 可执行 Contract 的最低要求
+
+当用户要求“联动分析”“workflow 编排”“step executor”“把 YAML 收敛成可执行 schema”时，至少满足以下要求。
+
+### workflow 索引
+
+必须包含：
+
+- `schema`
+- `schema_reference`
+- `workflow_files`
+- `common_execution`
+- `time_window_policies`
+
+### workflow 定义
+
+必须包含：
+
+- `schema`
+- `workflow_id`
+- `title`
+- `intent_types`
+- `entry_modules`
+- `required_context`
+- `steps`
+
+每个 step 至少要显式写出：
+
+- `step_id`
+- `kind`
+- `module` 或等价执行目标
+- `description`
+- `produces`
+
+如果 step 存在顺序或条件，还必须显式写出：
+
+- `depends_on`
+- `run_if_any` 或等价条件字段
+
+### module contract
+
+必须包含：
+
+- `schema`
+- `module_id`
+- `entry_hints`
+- `execution.required_inputs`
+- `execution.primary_source`
+- `execution.produces`
+- `execution.handoff`
+
+### datasource / correlation contract
+
+必须包含：
+
+- `schema`
+- `schema_reference`
+- 可解析的数据源定位或关联键提取规则
+
+禁止：
+
+- 只写“建议后续看 backend / postgresql”，但不写触发条件和 handoff 入口
+- 只写“可能联动某模块”，但没有输入、条件和产出
+- 在 contract 示例里直接写真实租户名、本机绝对路径、用户名、集群名后缀
+
+## 4. 稳定事实与动态事实边界
 
 ### 可以进入永久文档的内容
 
@@ -132,14 +205,16 @@
 - 样本导出文件名
 - 单个样本里的热点值
 
-## 4. 查询与流程生成约束
+## 5. 查询与流程生成约束
 
 - 只有字段存在时，才能生成依赖该字段的查询。
 - 含连字符的字段名在 YAML 或 SQL 示例里要考虑引用方式，避免生成不可执行示例。
 - 如果字段不足以支撑安全、运维或业务三个方向中的某一个，必须明确写出“当前字段不足”。
 - 如果日志家族不明确，优先生成通用骨架，并提示后续补充。
+- 如果 workflow 依赖前一步产出的事实，必须显式写在 `produces` 和下一步的条件里，不能靠读者脑补。
+- 如果是多模块联动，至少要交代主事实源、补证源和 handoff 方向。
 
-## 5. 最终自检清单
+## 6. 最终自检清单
 
 - 是否与同级目录命名风格一致
 - 如果没有同级目录，是否使用了可独立迁移的便携命名
@@ -149,3 +224,5 @@
 - 是否能跨环境复用
 - 是否在用户没确认前，把样本值误写成长期事实
 - 是否把参考仓库误当成了 skill 的固定输出结构
+- 如果补了 contract，是否补齐了 `schema`、step 输入、条件、事实产出和 handoff
+- 是否避免把真实环境名、本机路径、用户名、Pod 名直接写进长期 schema

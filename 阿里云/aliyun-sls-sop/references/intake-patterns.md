@@ -66,6 +66,18 @@
 - 已完成的 logstore 不重复生成
 - 先判断是继续 Phase B、Phase C 还是 Phase D
 
+### 模式 F
+
+`把现有 SOP 仓库的 YAML 收敛成可执行 schema` / `给这个模块补联动分析的 workflow 和 handoff`
+
+把它理解成：
+
+- 目标通常不是新起一套文档，而是在现有仓库结构上补机器可执行 contract
+- 先识别当前仓库是否已有 `SOP.md`、`workflows/overview.yaml`、模块 `overview.yaml`、`log-sources/overview.yaml`、`correlation-keys/overview.yaml`
+- 默认保留现有说明性段落、兼容老字段，不要粗暴重写成只剩 schema
+- 需要明确 `workflow_id`、`module_id`、步骤输入、条件跳转、产出事实、handoff 目标
+- 如果用户提到 `k8s`、`backend`、`postgresql` 等联动模块，把它们当作 workflow step 和 module handoff 的候选，而不是只写成“建议后续排查”
+
 ## 2. 环境识别顺序
 
 优先级如下：
@@ -132,6 +144,9 @@
 - request id
 - 单个样本里的热点值
 - 某一份导出文件名
+- 本机绝对路径
+- 真实用户名
+- 临时 Pod 名、容器 ID、集群实例后缀
 
 ## 4. 业务 / 运维 / 安全三个视角
 
@@ -170,10 +185,12 @@
 - 如果必须提到观察值，要明确标注为运行时观察、示例值或样本提示。
 - 优先使用 `dynamic_from_user_input_or_logs`、`runtime observation`、`candidate`、`observed in sample`、`requires confirmation` 这类表述。
 - 如果字段缺失，不要发明依赖该字段的查询或流程。
+- 如果是在补可执行 contract，不要把真实环境名、本机路径、租户标识写进 schema 示例；优先用参数化键、别名或占位符。
 
 ## 6. 推荐联动文件
 
 - 需要按日志家族选择模板时，读 `references/log-families.md`
 - 需要判断最终产物时，读 `references/output-modes.md`
+- 需要把说明性 YAML 升级成可执行 workflow / module / datasource / correlation contract 时，读 `references/executable-contracts.md`
 - 需要从 SLS project 或本地目录走完整流水线时，读 `references/sls-project-workflow.md`
 - 需要检查输出是否合格时，读 `references/output-contracts.md`

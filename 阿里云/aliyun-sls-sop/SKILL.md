@@ -11,9 +11,10 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 2. 先按 [references/intake-patterns.md](references/intake-patterns.md) 识别输入模式和环境。
 3. 如果输入是 SLS project、本地 project/logstore 目录、index/dashboard/alert/scheduled_sql/saved_search 资源，或用户说“继续上次生成”，先读 [references/sls-project-workflow.md](references/sls-project-workflow.md)。
 4. 如果用户提供 CSV 或 CSV.GZ 日志样本，先执行 `python3 scripts/profile_csv.py <csv-path>`；需要快速起骨架时再执行 `python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>`。
-5. 在决定最终产物前，先读 [references/output-modes.md](references/output-modes.md) 和 [references/doc-types.md](references/doc-types.md)。
-6. 在判断日志家族和默认命名之前，读 [references/log-families.md](references/log-families.md)。
-7. 收尾前按 [references/output-contracts.md](references/output-contracts.md) 对照检查。
+5. 如果用户要“修改现有 SOP 仓库”“新增 workflow / module / datasource / correlation YAML”“把说明书式 YAML 收敛成可执行 schema / contract”，先读 [references/executable-contracts.md](references/executable-contracts.md)。
+6. 在决定最终产物前，先读 [references/output-modes.md](references/output-modes.md) 和 [references/doc-types.md](references/doc-types.md)。
+7. 在判断日志家族和默认命名之前，读 [references/log-families.md](references/log-families.md)。
+8. 收尾前按 [references/output-contracts.md](references/output-contracts.md) 对照检查。
 
 ## 先路由任务
 
@@ -30,6 +31,15 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 - 适用于用户直接给出 SLS project、本地抓取目录、单个 logstore 目录，或者明确要求“从 index/dashboard/alert/scheduled_sql/saved_search 生成 SOP / SKILL / overview”。
 - 这个模式先走 project 级数据抓取、预处理、精选、模板归一化、可选验证、断点恢复和审计，再决定最终落成 overview.md、SKILL.md 或仓库文档套件。
 - 详细步骤和命令都在 [references/sls-project-workflow.md](references/sls-project-workflow.md)；执行时按需读取 `rules/*.md`。
+
+### 模式 C：SOP 可执行 Contract 模式
+
+- 适用于“让 sop-chat / agent 能直接消费 YAML”“补 workflow / step / handoff”“把导航型 overview.yaml 升级成可执行 contract”“给联动分析补 schema”这类请求。
+- 这个模式不是替代文档套件，而是在已有 `SOP.md`、`overview.yaml`、`workflows/overview.yaml`、模块 `overview.yaml`、`log-sources/overview.yaml`、`correlation-keys/overview.yaml` 之上补机器可执行字段。
+- 默认同时维护两层内容：
+  - 人类可读层：说明、路由、边界、维护提示。
+  - 机器可执行层：`schema`、`schema_reference`、`workflow_id`、`module_id`、`entry_hints`、`execution`、`steps`、`depends_on`、`run_if_any`、`produces`。
+- 详细规则读 [references/executable-contracts.md](references/executable-contracts.md)。
 
 ### 特殊组合：Project 索引 + 模块五件套
 
@@ -78,6 +88,7 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
   - `*_analysis_sop.yaml`
   - `*_report_template.md`
 - 只有当用户明确要求“和现有目录对齐”时，才借用目标仓库同级文件的命名和章节分工。
+- 如果用户还要求联动分析、步骤编排或给 agent 直接消费，继续按 [references/executable-contracts.md](references/executable-contracts.md) 为 `overview.yaml`、工作流索引和关联键索引补机器可执行字段，而不是只停在说明文字。
 
 ### 5. 先解决同类日志冲突，再生成文档
 
@@ -145,6 +156,7 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 - 无论来自 CSV 还是 SLS project，都继续遵守稳定事实 / 动态事实边界。
 - 如果 `project_summary.json`、`data_summary.md`、`fragments/datasource.md` 或 live 查询结果显示同类日志在多个入口同时存在，先做去重和 `source_role` 判定，再决定是否生成新的子模块。
 - 对这类双入口场景，优先把冲突处理规则返写到根入口、聚合入口和具体模块，不要只在单个 leaf 文档里临时说明。
+- 如果用户明确要求“让系统能顺序执行查询、按条件跳转模块、沉淀 handoff 规则”，除了常规文档外，还要把这些事实返写到 workflow / module / datasource / correlation contract，而不是只写在 README 或总结里。
 
 ## 使用 CSV 画像脚本
 
@@ -198,6 +210,7 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 - datasource 规则尽量做成动态解析。
 - 对环境敏感的值要参数化或运行时解析。
 - 尽量复用目标仓库现有的文档风格和分工。
+- 如果仓库需要联动分析，把步骤顺序、条件判断、输入输出事实写成结构化字段，而不是散落在段落叙述里。
 
 ### 不应该做
 
@@ -205,6 +218,7 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 - 不要把单个样本的热点值当成永久白名单。
 - 不要把样例文件名当成稳定依赖写进正式 SOP。
 - 不要把所有日志都强行解释成安全问题。
+- 不要把真实租户名、本机绝对路径、用户名、Pod 名、集群名直接写进 skill 模板、schema 示例或长期 contract。
 
 ## 默认输出策略
 
@@ -217,10 +231,11 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 ### 针对仓库配套文档
 
 - `README.md` 面向人工维护者。
-- `overview.yaml` 只做导航和路由。
+- `overview.yaml` 默认负责导航和路由；如果用户要求可执行 contract，可在保留可读内容的前提下叠加机器可执行字段。
 - datasource 文件是稳定环境映射的唯一事实源。
 - SOP 文件只放固定流程和判断规则。
 - report template 必须和 SOP 输出对齐。
+- workflow / module / datasource / correlation contract 负责让 agent 能稳定执行步骤、判断跳转和串联数据源。
 
 ### 针对其它文档类型
 
@@ -231,6 +246,7 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 ## 配套参考文件
 
 - 在判断环境、提炼话术模式、约束硬编码边界时，读 [references/intake-patterns.md](references/intake-patterns.md)。
+- 在补 workflow、module、datasource、correlation 的机器可执行结构时，读 [references/executable-contracts.md](references/executable-contracts.md)。
 - 在选择最终产物是 overview、SKILL 还是仓库五件套时，读 [references/output-modes.md](references/output-modes.md)。
 - 在输入是 SLS project、本地抓取目录或需要断点续跑时，读 [references/sls-project-workflow.md](references/sls-project-workflow.md)。
 - 在选择日志家族、模块目录、默认命名时，读 [references/log-families.md](references/log-families.md)。
@@ -245,6 +261,9 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 - `继续做某个日志类型的 sop，目录结构和同目录其它日志对齐`
 - `分析 PROD 某系统 最近的事件，并沉淀成 SOP`
 - `补齐 README、overview、datasource、analysis_sop、report_template`
+- `把现有 SOP 仓库的 YAML 收敛成可执行 schema，保留现有说明文字`
+- `给这个模块补 workflow steps、handoff 和 datasource/correlation contract`
+- `让这个 SOP 能支持先查 k8s-event，再看 backend，再按条件联动 postgresql`
 - `保留 project 级索引，同时每个 logstore 输出 README、overview.yaml、datasource、analysis_sop、report_template`
 - `把这份日志样本抽象成通用文档，不要硬编码样本里的对象`
 - `帮我生成 <project-name> 的 SOP 文档`

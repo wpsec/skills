@@ -22,6 +22,7 @@
 
 - 以 [doc-types.md](doc-types.md) 和 [output-contracts.md](output-contracts.md) 为主。
 - 如果输入来自 SLS project 或标准化抓取目录，可以先走 project 级流水线，再把结果折叠成五件套。
+- 如果用户同时要求联动分析或 workflow 可执行化，可叠加 [executable-contracts.md](executable-contracts.md) 定义的 contract 字段。
 
 ## 2. Project 索引 + 模块五件套
 
@@ -51,6 +52,7 @@
 - 根目录仍保留 `SOP.md`，project 目录仍保留 `overview.md`。
 - project 索引中的 leaf 链接默认指向 `<module>/README.md`，由 README 再路由到其余四个文件。
 - 这类模式通常先跑 SLS 资源流水线，再把 leaf 的中间产物折叠成五件套。
+- 如果用户还要求让系统自动串联模块，额外补 `workflows/overview.yaml`、workflow 文件、模块 contract 和关联键索引。
 
 ## 3. Project / Logstore SOP 文档
 
@@ -98,6 +100,7 @@
 - 如果用户同时要“从 SLS project 抽取能力”又要“和仓库目录对齐”，默认先判断是否还要 project 级索引：
   - 要 project 级索引：走 Project 索引 + 模块五件套模式
   - 不要 project 级索引：走仓库模块文档套件模式
+- 如果用户明确提到 `可执行`、`schema`、`workflow`、`handoff`、`step`、`联动分析`、`step executor`，在上述模式基础上叠加可执行 Contract 覆盖层，而不是切到全新的产物模式。
 
 ## 6. 流水线结果到仓库五件套的映射
 
@@ -111,3 +114,27 @@
 
 - `project_summary.json`、`selected_logstores.json` 还要喂给根索引 `SOP.md` 和 project 索引 `overview.md`
 - 每个 module 的 `README.md` 是 leaf 入口文件，承担模块说明、文件清单、阅读顺序和返回 project 索引的职责
+
+## 7. 可执行 Contract 覆盖层
+
+这不是单独的产物模式，而是叠加在模式 1 或模式 2 上的增强层。
+
+适用输入：
+
+- 用户要修改现有 SOP 仓库，而不是只生成一次性文档
+- 用户明确要求“让 agent / sop-chat 直接消费 YAML”
+- 用户要 workflow step、条件跳转、handoff、facts、datasource 解析规则
+
+默认补齐：
+
+- `workflows/overview.yaml`
+- `workflows/<workflow>.yaml`
+- 模块 `overview.yaml` 的可执行字段
+- `log-sources/overview.yaml`
+- `correlation-keys/overview.yaml`
+
+约束：
+
+- 保留原有人类可读说明，默认做增量增强
+- `workflow` 负责步骤编排，`module` 负责单模块 contract，`datasource` 和 `correlation` 负责运行时解析
+- 不要把联动逻辑只散落在 README 或结论段落里
