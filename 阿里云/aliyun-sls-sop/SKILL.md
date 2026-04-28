@@ -116,8 +116,12 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 - 样本推导值在未确认稳定前，不能进入永久规则。
 - 输出结果必须满足 [references/output-contracts.md](references/output-contracts.md) 的最低要求。
 - SOP 必须包含触发条件、执行步骤、判断标准、升级路径、记录要求。
-- 报告模板必须覆盖 SOP 承诺的输出结果，并包含钉钉兼容的根本原因分析 ASCII 数据流图（使用 text 代码块，禁止 Mermaid）。
-- 对所有告警、运行事件和异常分析 SOP，必须区分 `direct_trigger / symptom_evidence / root_cause_evidence / root_cause_evidence_status`；告警名称、阈值命中、状态码、事件 reason、错误数量、延迟指标等触发事实不能直接写成根因，必须要求能解释触发事实的补证日志、指标、配置、变更或依赖证据。
+- 报告模板必须覆盖 SOP 承诺的输出结果，并包含纯文本根本原因分析证据链图（使用 text 代码块，禁止 Mermaid）。
+- 对所有告警、运行事件和异常分析 SOP，内部 contract 必须区分 `direct_trigger / symptom_evidence / intermediate_cause / root_cause_evidence / root_cause_evidence_status`；报告可见模板必须使用中文字段：直接触发器、触发证据、中间原因、中间证据、最终根因、根因证据、证据状态、已确认层级、下一跳补证。告警名称、阈值命中、状态码、事件 reason、错误数量、延迟指标等触发事实不能直接写成根因，必须要求能解释触发事实的补证日志、指标、配置、变更或依赖证据。
+- 当用户问“原因 / 根因 / 为什么”时，SOP 的交付目标是解释告警，不是证明告警成立；生成的 workflow 必须沿 `direct_trigger -> symptom_evidence -> intermediate_cause -> final_root_cause` 继续下钻，直到取得可操作原因，或明确列出已穷尽的数据源、缺失证据和下一跳查询。
+- `root_cause_evidence_status=confirmed` 只允许用于最终可操作原因，例如具体配置变更、缺失配置、依赖服务异常、资源限制、代码异常最底层 `Caused by`、权限/策略拒绝或容量瓶颈；应用启动失败、Probe 失败、BackOff、5xx、ERROR 聚合、`BeanCreationException` 等只能作为中间原因或症状，除非已补到更底层解释证据。
+- 报告模板必须把“已确认层级”和“最终根因状态”分开：内部 contract 可以写 `direct_trigger_confirmed / intermediate_cause_confirmed / final_root_cause_confirmed`，报告可见层写成“触发事实已确认 / 中间原因已确认 / 最终根因已确认”和“已确认 / 证据不足 / 需联动”，不能把中间原因包装成最终根因。
+- 根因证据必须给足排障上下文：可用时列出 3-5 条关键日志 / 指标 / 配置 / 变更片段；应用异常至少保留异常类型、关键 message、最底层 `Caused by` 和对应时间 / 对象 / trace，避免只给一句摘要导致无法修复。
 - README 和 overview 必须把读者路由到下一个正确文件。
 
 ## 模式 B：SLS 资源流水线模式
@@ -235,7 +239,7 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 - `overview.yaml` 默认负责导航和路由；如果用户要求可执行 contract，可在保留可读内容的前提下叠加机器可执行字段。
 - datasource 文件是稳定环境映射的唯一事实源。
 - SOP 文件只放固定流程和判断规则。
-- report template 必须和 SOP 输出对齐，并包含钉钉兼容的根本原因分析 ASCII 数据流图（使用 text 代码块，禁止 Mermaid）。
+- report template 必须和 SOP 输出对齐，并包含纯文本根本原因分析证据链图（使用 text 代码块，禁止 Mermaid）。
 - workflow / module / datasource / correlation contract 负责让 agent 能稳定执行步骤、判断跳转和串联数据源。
 
 ### 针对其它文档类型

@@ -149,7 +149,9 @@
 - 事实名应表达稳定语义，例如 `direct_trigger`、`suspect_dependency_type`、`needs_database_followup`
 - 对所有告警、运行事件和异常分析问题，必须区分 `direct_trigger`、`symptom_evidence`、`root_cause_evidence` 与 `root_cause`；告警名称、阈值命中、状态码、事件 reason、错误数量、延迟指标等触发事实只能驱动补证步骤，不能直接作为根因产出。
 - 当用户问“原因 / 根因 / 为什么”时，workflow 至少应产出 `root_cause_evidence_status` 或等价事实，用于标记 `confirmed`、`evidence_insufficient`、`needs_handoff`。
-- 若前一步只产出症状事实，后续必须有 `conditional_module_query` 或等价 step 补日志、指标、配置、变更、运行事件、依赖或领域主事实源证据。
+- 原因类 workflow 必须产出 `confirmed_cause_level` 或等价事实，区分 `direct_trigger_confirmed`、`intermediate_cause_confirmed` 和 `final_root_cause_confirmed`；只有最终可操作原因确认时，才能把 `root_cause_evidence_status` 写为 `confirmed`。
+- 若前一步只产出症状事实，后续必须有 `conditional_module_query`、`handoff`、`drilldown` 或等价 step 补日志、指标、配置、变更、运行事件、依赖或领域主事实源证据。
+- 如果所有可用数据源都无法确认最终原因，summary step 必须输出 `blocked_by_missing_evidence`、已查询数据源和下一跳补证动作，而不是把“告警成立”当作分析完成。
 
 禁止：
 

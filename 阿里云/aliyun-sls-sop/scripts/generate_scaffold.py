@@ -346,10 +346,10 @@ def render_analysis_sop(summary: dict, docs: dict[str, str], spec: dict, owner: 
         f"      - {yaml_quote('关注失败、拒绝、异常来源、高频对象和异常热点。')}\n"
         f"      - {yaml_quote('对比是否符合正常基线或已知白名单。')}\n"
         f"  - step: {yaml_quote('3. 做根因排查')}\n"
-        f"    goal: {yaml_quote('把异常映射到资源、调用链或策略层。')}\n"
+        f"    goal: {yaml_quote('把直接触发器继续下钻到可解释、可处置的最终原因。')}\n"
         "    checks:\n"
-        f"      - {yaml_quote('结合资源标识、状态、动作和上下文做归因。')}\n"
-        f"      - {yaml_quote('区分配置问题、业务异常、运维抖动和安全风险。')}\n"
+        f"      - {yaml_quote('先标注直接触发器和触发证据，再补能解释触发事实的日志、指标、配置、变更或依赖证据。')}\n"
+        f"      - {yaml_quote('区分中间原因与最终根因；只有最终可操作原因有证据时才能写已确认。')}\n"
         f"  - step: {yaml_quote('4. 做分级响应')}\n"
         f"    goal: {yaml_quote('按影响面和风险等级确定响应动作。')}\n"
         "    checks:\n"
@@ -358,14 +358,14 @@ def render_analysis_sop(summary: dict, docs: dict[str, str], spec: dict, owner: 
         f"  - step: {yaml_quote('5. 输出结论与闭环项')}\n"
         f"    goal: {yaml_quote('形成结构化报告，并沉淀规则优化项。')}\n"
         "    checks:\n"
-        f"      - {yaml_quote('明确异常是否成立、影响范围和根因状态。')}\n"
-        f"      - {yaml_quote('给出立即动作、后续核查和规则沉淀建议。')}\n"
+        f"      - {yaml_quote('优先回答原因：说明已解释到哪一层、最终根因状态和仍缺失的关键证据。')}\n"
+        f"      - {yaml_quote('给出下一跳补证、立即动作、后续核查和规则沉淀建议。')}\n"
         f"      - {yaml_quote(f'严格按 {report_name} 输出结果。')}\n\n"
         "judgement_rules:\n"
         f"  - condition: {yaml_quote('出现明显失败、拒绝、异常状态或高频热点值。')}\n"
         f"    standard: {yaml_quote('判定为候选异常，进入根因排查。')}\n"
-        f"  - condition: {yaml_quote('异常对象能和资源、身份、策略或业务动作形成稳定关联。')}\n"
-        f"    standard: {yaml_quote('可输出高置信度归因结论，并进入分级响应。')}\n"
+        f"  - condition: {yaml_quote('异常对象能和资源、身份、策略、业务动作、配置、变更或依赖证据形成稳定因果链。')}\n"
+        f"    standard: {yaml_quote('可输出最终根因已确认；若只解释到中间层，只能标记中间原因已确认。')}\n"
         f"  - condition: {yaml_quote('字段不足或证据冲突。')}\n"
         f"    standard: {yaml_quote('只能给出待确认结论，并补充需要的字段或数据源。')}\n\n"
         "escalation_path:\n"
@@ -390,7 +390,7 @@ def render_analysis_sop(summary: dict, docs: dict[str, str], spec: dict, owner: 
         f"  - {yaml_quote('必须明确问题类型、时间范围、关键对象和关键证据。')}\n"
         f"  - {yaml_quote('必须明确哪些结论已证实、哪些仍待确认。')}\n"
         f"  - {yaml_quote('若字段不足以支撑某个判断，必须在报告中显式说明。')}\n"
-        f"  - {yaml_quote('必须包含钉钉兼容的根本原因分析 ASCII 数据流图，使用 text 代码块串联触发事实、主事实源、候选根因、补证、定性和处置闭环，禁止 Mermaid。')}\n\n"
+        f"  - {yaml_quote('必须包含纯文本根本原因分析证据链图，使用 text 代码块并用中文字段串联直接触发器、触发证据、中间原因、最终根因、已确认层级和下一跳补证，禁止 Mermaid；可用时必须提供 3-5 条根因证据日志片段。')}\n\n"
         f"report_template_file: {yaml_quote(docs['report_template'])}\n"
     )
 
@@ -427,24 +427,28 @@ def render_report_template(spec: dict) -> str:
 
         ```text
         ┌──────────────────────────────────────────────┐
-        │        根本原因分析因果链（钉钉兼容）        │
+        │              根本原因分析因果链              │
         ├──────────────────────────────────────────────┤
-        │ direct_trigger：<告警 / 阈值 / 状态码 / reason> │
-        │ └─ 主事实源：<source_alias / project / logstore> │
-        │    └─ 症状确认：<错误 / 超时 / 事件 / 指标>      │
+        │ 直接触发器：<告警 / 阈值 / 状态码 / reason>  │
+        │ 触发证据：<证明触发事实成立的日志 / 指标 / 事件> │
         │                                                  │
-        │ 候选根因 1：<应用 / 配置 / 策略 / 依赖>          │
-        │ ├─ root_cause_evidence：<日志 / 指标 / 配置 / 变更> │
-        │ └─ root_cause_evidence_status：<confirmed / evidence_insufficient / needs_handoff> │
+        │ 中间原因：<已确认中间原因；无则写无>        │
+        │ 中间证据：<支撑中间原因的证据>              │
         │                                                  │
-        │ 候选根因 2：<资源 / 容量 / 网络 / 下游>          │
-        │ ├─ root_cause_evidence：<时间线 / 聚合 / 关联对象> │
-        │ └─ root_cause_evidence_status：<confirmed / evidence_insufficient / needs_handoff> │
-        │                                                  │
-        │ 根因定性：<结论；证据不足时写“根因待确认”>      │
-        │ └─ 处置闭环：<修复 / 隔离 / 联动 / 规则沉淀>     │
+        │ 最终根因：<最终可操作原因；未确认则写待确认> │
+        │ 根因证据：<配置 / 变更 / 依赖 / 代码底层证据> │
+        │ 证据状态：<已确认 / 证据不足 / 需联动>       │
+        │ 已确认层级：<触发事实已确认 / 中间原因已确认 / 最终根因已确认> │
+        │ 下一跳补证：<最终根因未确认时的下一跳补证>  │
+        │ 关键日志片段：<见“根因证据日志片段”小节>    │
         └──────────────────────────────────────────────┘
         ```
+
+        ### 3.1 根因证据日志片段
+        
+        | 时间 | 来源 | 对象 / 关联键 | 日志 / 指标 / 配置片段 | 解释 |
+        | ---- | ---- | ------------- | ---------------------- | ---- |
+        | <填写> | <project/logstore 或数据源别名> | <pod / trace_id / class_method / SQL / request_id> | <保留足够上下文；可用时至少列 3-5 条关键片段；应用异常至少包含异常类型、关键 message 和最底层 Caused by> | <说明该片段如何支撑或否定最终根因> |
 
         ## 4. 关键发现
 
@@ -456,9 +460,13 @@ def render_report_template(spec: dict) -> str:
 
         ### 4.2 根因排查
 
-        - 关键证据：<填写>
-        - 归因判断：<填写>
-        - 根因状态：<已证实 / 高概率 / 待确认>
+        - 直接触发器：<填写触发事实>
+        - 触发证据：<填写证明触发事实成立的证据>
+        - 中间原因：<填写已确认但非最终根因的中间原因；没有则写无>
+        - 根因证据：<填写能解释触发事实的最终证据；没有则写缺失>
+        - 已确认层级：<触发事实已确认 / 中间原因已确认 / 最终根因已确认>
+        - 证据状态：<已确认 / 证据不足 / 需联动>
+        - 下一跳补证：<最终根因未确认时，填写下一跳补证动作>
 
         ### 4.3 影响面
 
