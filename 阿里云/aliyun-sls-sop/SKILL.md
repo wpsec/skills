@@ -14,7 +14,15 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 5. 如果用户要“修改现有 SOP 仓库”“新增 workflow / module / datasource / correlation YAML”“把说明书式 YAML 收敛成可执行 schema / contract”，先读 [references/executable-contracts.md](references/executable-contracts.md)。
 6. 在决定最终产物前，先读 [references/output-modes.md](references/output-modes.md) 和 [references/doc-types.md](references/doc-types.md)。
 7. 在判断日志家族和默认命名之前，读 [references/log-families.md](references/log-families.md)。
-8. 收尾前按 [references/output-contracts.md](references/output-contracts.md) 对照检查。
+8. 如果用户要沉淀 Prometheus、MetricStore、容器内存、CPU、资源使用率、request/limit、告警事件与 K8s 事件的联动能力，按本文“通用能力：指标告警与资源类 SOP”生成可复用模块和 contract。
+9. 收尾前按 [references/output-contracts.md](references/output-contracts.md) 对照检查。
+
+## 通用规则：可执行联动优先
+
+- SOP 中的 `handoff` 默认是可执行的下一步，而不是报告里的泛泛建议；能从当前证据确定目标模块和数据源时，必须写成“继续查询 / 必须补证”的执行要求。
+- 对 `backend -> postgresql` 场景，若应用日志命中数据库连接池、HikariCP、`Connection is closed`、`datasource`、`connection pool`、`SQLTransientConnectionException`、SQL 或事务相关异常，backend 模块必须带着应用侧证据继续查询 PostgreSQL 模块；只有 PostgreSQL 查询失败、无权限、无数据源或工具不可用时，才允许输出 `root_cause_evidence_status=needs_handoff`。
+- 跨模块报告必须压缩成一条可扫读的分析链，例如 `backend 症状 -> PostgreSQL 补证 -> 当前结论 / 缺失证据`，不要把入口模块和联动模块的完整报告简单拼接成超长输出。
+- 自动联动后的报告优先保留结论、关键证据、已确认层级、缺失证据和下一步动作；聚合表、长日志片段和重复背景只保留能支撑判断的最小必要内容。
 
 ## 先路由任务
 
@@ -40,6 +48,13 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
   - 人类可读层：说明、路由、边界、维护提示。
   - 机器可执行层：`schema`、`schema_reference`、`workflow_id`、`module_id`、`entry_hints`、`execution`、`steps`、`depends_on`、`run_if_any`、`produces`。
 - 详细规则读 [references/executable-contracts.md](references/executable-contracts.md)。
+
+### 特殊组合：指标告警 + 资源根因分析
+
+- 适用于用户提到 Prometheus、MetricStore、容器内存、CPU、资源使用率、request/limit、OOM、Evicted、Pod 重启、监控告警事件、“为什么内存高 / CPU 高 / 资源高”等请求。
+- 默认不要把这类问题塞进 backend、database 或 alert-entry 单模块里。告警入口、指标事实、运行事件和工作负载日志必须分层。
+- 如果仓库已有告警入口模块，告警入口只负责 `direct_trigger` 和入口分类；指标类事实必须由 `metrics`、`prometheus` 或等价模块承接。
+- 如果仓库没有指标模块，但已有 MetricStore / Prometheus 数据源或资源类告警，应优先补出一个可复用指标模块五件套，再把根入口、workflow、log-sources、correlation-keys 接上。
 
 ### 特殊组合：Project 索引 + 模块五件套
 
@@ -120,9 +135,172 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 - 对所有告警、运行事件和异常分析 SOP，内部 contract 必须区分 `direct_trigger / symptom_evidence / intermediate_cause / root_cause_evidence / root_cause_evidence_status`；报告可见模板必须使用中文字段：直接触发器、触发证据、中间原因、中间证据、最终根因、根因证据、证据状态、已确认层级、下一跳补证。告警名称、阈值命中、状态码、事件 reason、错误数量、延迟指标等触发事实不能直接写成根因，必须要求能解释触发事实的补证日志、指标、配置、变更或依赖证据。
 - 当用户问“原因 / 根因 / 为什么”时，SOP 的交付目标是解释告警，不是证明告警成立；生成的 workflow 必须沿 `direct_trigger -> symptom_evidence -> intermediate_cause -> final_root_cause` 继续下钻，直到取得可操作原因，或明确列出已穷尽的数据源、缺失证据和下一跳查询。
 - `root_cause_evidence_status=confirmed` 只允许用于最终可操作原因，例如具体配置变更、缺失配置、依赖服务异常、资源限制、代码异常最底层 `Caused by`、权限/策略拒绝或容量瓶颈；应用启动失败、Probe 失败、BackOff、5xx、ERROR 聚合、`BeanCreationException` 等只能作为中间原因或症状，除非已补到更底层解释证据。
+- 对已经具备明确目标模块和数据源的 handoff，不要只在处置建议里写“建议联动”；必须在 workflow / overview / analysis_sop 中声明执行器应继续查询。只有目标数据源无法查询、查询失败或缺少权限时，才输出 `needs_handoff`，并写清失败点。
 - 报告模板必须把“已确认层级”和“最终根因状态”分开：内部 contract 可以写 `direct_trigger_confirmed / intermediate_cause_confirmed / final_root_cause_confirmed`，报告可见层写成“触发事实已确认 / 中间原因已确认 / 最终根因已确认”和“已确认 / 证据不足 / 需联动”，不能把中间原因包装成最终根因。
 - 根因证据必须给足排障上下文：可用时列出 3-5 条关键日志 / 指标 / 配置 / 变更片段；应用异常至少保留异常类型、关键 message、最底层 `Caused by` 和对应时间 / 对象 / trace，避免只给一句摘要导致无法修复。
+- 自动联动或多模块联动报告必须限制体量：优先输出“结论 / 分析链 / 关键证据 / 缺失证据 / 下一步动作”，避免重复整段粘贴上游模块报告；长表格只保留 Top 3-5 项。
 - README 和 overview 必须把读者路由到下一个正确文件。
+
+## 通用能力：指标告警与资源类 SOP
+
+这部分能力用于任何需要沉淀“告警事件 -> 指标事实 -> 运行事件 -> 工作负载日志 -> 根因证据”的 SOP 仓库，不绑定具体环境、project、logstore、租户或 Pod。
+
+### 1. 什么时候新增指标模块
+
+满足任一条件时，优先新增或完善 `metrics` / `prometheus` / `observability-metrics` 等指标模块，而不是把规则写死在业务模块里：
+
+- 仓库中存在 Prometheus、MetricStore、时序指标、CMS 告警中心或云监控告警数据源。
+- 用户问题包含容器内存、CPU、资源使用率、request、limit、OOM、Evicted、重启计数、指标阈值。
+- 现有告警入口只能证明规则触发，无法稳定给出 namespace、pod、container、metric_name、当前值、峰值或趋势。
+- 同一个资源类问题需要同时联动告警事件、MetricStore、K8s event、应用日志或数据库日志。
+
+### 2. 指标模块默认五件套
+
+如果目标仓库使用模块五件套，指标模块默认输出：
+
+- `README.md`：写清指标模块职责、文件清单、读取顺序和边界。
+- `overview.yaml`：写清 `entry_hints`、`task_routing_rules`、`execution`、`handoff` 和证据要求。
+- `*_datasources.yaml`：登记告警事件源、告警执行源、MetricStore / PromQL 源、K8s 事件源和工作负载补证源。
+- `*_analysis_sop.yaml`：写清从告警触发、指标范围、趋势、request/limit、运行事件到根因判断的步骤。
+- `*_report_template.md`：必须包含指标证据表、K8s 事件表、工作负载日志表、根因证据链和证据状态。
+
+模块命名必须跟随目标仓库风格；没有先例时优先使用 `prometheus` 或 `metrics`，不要把当前仓库的模块名硬编码进 skill。
+
+报告模板是输出排版文件，不是分析入口。若执行器先读取了 `*_report_template.md`，必须回读同模块 `overview.yaml`、`*_datasources.yaml` 和 `*_analysis_sop.yaml` 后才能查询或输出。
+
+### 3. 分层职责
+
+指标类 SOP 必须明确这些职责边界：
+
+- 告警入口模块：只确认告警是否发生、持续或恢复，产出 `direct_trigger`、`alert_subject`、`severity`、`status`、`alert_time` 和 handoff 目标。
+- 指标模块：确认指标事实，产出 `metric_evidence`、`affected_scope`、`metric_name`、`namespace`、`pod_name`、`container_name`、`value`、`limit_or_request`、`trend`。
+- K8s 事件模块：确认 OOMKilled、Evicted、Killing、BackOff、Unhealthy、ProbeWarning、FailedScheduling 等运行事件。
+- 工作负载模块：解释指标异常前后的业务、应用、数据库或中间件行为，只能作为辅助证据，不能替代指标事实。
+
+默认 handoff 顺序：
+
+```text
+alert-entry
+  -> metrics/prometheus
+    -> k8s-event
+      -> workload-specific module
+        -> summarize evidence state
+```
+
+如果用户直接问资源使用率或“为什么内存高 / CPU 高”，可以直接进入指标模块；若问题来自告警标题，先经告警入口建立入口事实，再 handoff 到指标模块。
+
+### 4. 数据源登记规则
+
+指标模块 datasource 必须区分：
+
+- `alert_event_source`：告警发生、恢复、持续状态，只能证明规则触发。
+- `alert_exec_source`：通知执行、重试、送达失败等链路补证。
+- `metric_source`：MetricStore、PromQL 或其它时序指标源，是资源用量事实的主证据。
+- `runtime_event_source`：K8s event 或等价运行事件源。
+- `workload_log_source`：应用、数据库、中间件或 stdout 日志，只作解释性补证。
+
+MetricStore / PromQL 源必须标记为指标源，不能当普通业务 Logstore 处理。普通日志 SQL 扫描为空，不能解释为指标不存在；必须在 SOP 中写清“查询能力不足 / 工具不支持指标查询”时的 `evidence_insufficient` 分支。
+
+如果告警事件已经包含结构化对象标签、`current_value` 和 PromQL / 阈值表达式，即使暂时无法直接执行 PromQL，也必须把告警事件记录为“指标阈值快照证据”。此时缺失的是趋势、原始 working set、limit/request 明细或根因解释证据，不是“没有指标证据”。
+
+### 5. 关联键规则
+
+指标类 SOP 至少要把这些关联键写入 `correlation-keys` 或模块 `overview.yaml`：
+
+- `namespace`
+- `pod_name`
+- `container_name`
+- `workload_name`
+- `metric_name`
+- `alert_subject`
+- `alert_time`
+- `source_alias`
+- `limit_or_request`
+- `current_value`
+
+Prometheus / 云监控告警事件的对象标签提取顺序默认是：
+
+1. 优先解析结构化对象字段，例如 `resource.tags.namespace`、`resource.tags.pod`、`resource.tags.container` 或等价字段。
+2. 再解析 labels、annotations、message、通知正文等展示字段。
+3. 如果展示文本里出现 `Pod: null`、`Pod: <no value>` 或类似占位，但结构化对象字段有值，必须以结构化对象字段为准。
+
+如果告警事件缺少 namespace、pod、container 或 instance 标签，不能声称已定位对象；必须回到 MetricStore 或要求补充告警详情。
+
+### 6. 资源类分析步骤
+
+资源类 `analysis_sop` 默认包含这些步骤：
+
+1. 识别问题类型：内存、CPU、资源使用率、重启、OOM、Evicted 或其它指标异常。
+2. 收集告警触发事实：subject、severity、status、rule_id、alert_time。
+3. 抽取结构化对象：优先从 `resource.tags` 或等价结构化字段获取 namespace、pod、container，并抽取 current_value 和 PromQL。
+4. 验证指标查询能力：确认 MetricStore / PromQL 可用，列出候选指标和标签。
+5. 定位对象范围：按 namespace、pod、container、workload 聚合 TopN 和趋势。
+6. 对比 request/limit 或历史基线：区分“用量高”“接近限制”“超过阈值”和“缺少基线”。
+7. 关联运行事件：查询 OOMKilled、Evicted、Killing、BackOff、Unhealthy、ProbeWarning 等。
+8. 查看工作负载日志：只在对象明确后进入 backend、database、middleware、stdout 等模块。
+9. 生成候选原因研判：即使最终根因不能确认，也必须输出最可能解释、支持证据、反证、置信度和下一步一锤定音的证据。
+10. 输出证据状态：`confirmed_root_cause`、`likely_cause`、`metric_threshold_confirmed`、`trigger_only`、`evidence_insufficient`。
+
+### 7. 反误判规则
+
+指标类 SOP 必须内置这些约束：
+
+- 不能把“容器内存超过阈值”“CPU 超过阈值”等告警标题直接写成根因。
+- 不能把没有 OOMKilled 写成没有内存问题；它只能说明未发现内存杀死证据。
+- 不能把没有应用 OutOfMemoryError 写成没有容器内存高。
+- 不能把告警事件中的规则元数据当成 pod/container 标签。
+- 不能因为通知正文显示 Pod 为 null 或 `<no value>` 就放弃解析结构化 `resource.tags` 对象标签。
+- 不能因为普通 SQL 无法查询 MetricStore，就丢弃告警事件中的 current_value、PromQL 和对象标签。
+- 不能把 K8s 事件查询为空写成采集异常；只能说明当前窗口未发现匹配运行事件，除非另有采集失败证据。
+- 不能把未实际查询的数据源写成“无数据”；报告必须记录实际命中的 source_alias、project、logstore 或明确写“未查询”。
+- 工作负载日志可能包含密码、Token、连接串、租户密钥或完整 SQL 参数；报告只允许输出脱敏摘要和聚合结论，禁止粘贴原文。
+- 不能只用“依据不足”结束原因类问题；必须给出候选原因排序、最可能解释、反证和下一步确认动作。
+- 不能在没有 request/limit 或历史基线时输出明确使用率结论。
+- 不能把 checkpoint、业务 ERROR、探针失败、BackOff 单独解释为内存或 CPU 根因。
+
+### 8. Root cause contract
+
+指标类 workflow 必须产出：
+
+- `direct_trigger`
+- `trigger_condition`
+- `metric_evidence`
+- `affected_scope`
+- `runtime_event_evidence`
+- `workload_log_evidence`
+- `intermediate_cause`
+- `final_root_cause`
+- `root_cause_evidence`
+- `root_cause_evidence_status`
+- `confirmed_cause_level`
+- `next_evidence_action`
+- `cause_hypotheses`
+- `most_likely_explanation`
+- `decisive_next_evidence`
+
+判断标准：
+
+- `confirmed_root_cause`：指标事实定位到具体对象，异常程度有 limit/request 或基线支撑，并且有配置、变更、运行事件、流量、连接数、依赖或工作负载日志解释异常。
+- `likely_cause`：指标事实完整，但解释性证据不足。
+- `metric_threshold_confirmed`：告警事件已包含对象标签、current_value 和 PromQL / 阈值表达式，但缺少完整趋势、原始指标明细或根因解释证据。
+- `trigger_only`：只有告警触发记录或规则状态。
+- `evidence_insufficient`：缺少对象标签、指标查询能力、时间范围或关键关联键。
+
+当最终根因未确认时，报告仍必须给出“最可能解释”，但要明确标注为候选而不是最终根因。对 PostgreSQL / middleware postgres 容器，默认候选包括：正常缓存或 shared_buffers 高水位、查询负载或连接数导致工作集升高、容器 memory limit 偏小、内存泄漏或未受控增长。每个候选都要写支持证据和反向证据。
+
+### 9. 根入口和工作流必须同步
+
+新增指标模块时，至少同步这些位置：
+
+- 根入口 `SOP.md`：增加资源类问题路由规则和模块导航。
+- `alert-entry/overview.yaml` 或等价入口：资源类告警 handoff 到指标模块。
+- `workflows/overview.yaml`：给 Prometheus / metrics workflow 增加指标模块为 entry module。
+- `workflows/<metrics-workflow>.yaml`：把告警查询、指标查询、运行事件、工作负载日志和 summary 写成结构化 steps。
+- `log-sources/overview.yaml`：标记 MetricStore / PromQL 是指标源，不是普通 Logstore。
+- `correlation-keys/overview.yaml`：补 namespace、pod_name、container_name、metric_name、source_alias。
+- `alert-types/overview.yaml`：补资源类告警识别模式。
+
+所有这些更新都必须使用目标仓库自己的命名和目录结构，不要把某个项目的真实 project、logstore、租户、Pod 或本机路径写入 skill 模板。
 
 ## 模式 B：SLS 资源流水线模式
 
@@ -230,6 +408,7 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 ### 针对 SOP 请求
 
 - 主线优先按 `baseline -> anomaly -> response -> root cause -> closure` 组织。
+- 指标类问题优先按 `alert trigger -> metric evidence -> affected scope -> runtime event -> workload evidence -> root cause status` 组织。
 - 只有字段足够支撑时，才补具体查询示例。
 - 阈值和升级规则必须来自字段模型或用户明确要求，不能凭空捏造。
 
@@ -269,6 +448,9 @@ python3 scripts/generate_scaffold.py <csv-path> --out-dir <目标目录>
 - `把现有 SOP 仓库的 YAML 收敛成可执行 schema，保留现有说明文字`
 - `给这个模块补 workflow steps、handoff 和 datasource/correlation contract`
 - `让这个 SOP 能支持先查 k8s-event，再看 backend，再按条件联动 postgresql`
+- `让这个 SOP 支持 Prometheus 告警先查告警事件，再查 MetricStore，再联动 k8s-event 和应用日志`
+- `把容器内存 / CPU / 资源使用率的通用排查能力沉淀到 skill`
+- `给其它 SOP 仓库补一个可复用的 metrics / prometheus 模块`
 - `保留 project 级索引，同时每个 logstore 输出 README、overview.yaml、datasource、analysis_sop、report_template`
 - `把这份日志样本抽象成通用文档，不要硬编码样本里的对象`
 - `帮我生成 <project-name> 的 SOP 文档`
