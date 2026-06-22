@@ -38,6 +38,27 @@ def scan_text_by_line(content_lines: List[str], rules: Dict[str, Rule]) -> List[
     return findings
 
 
+# 默认跳过的文件模式 — 安全扫描工具的规则文件会自匹配
+SKIP_PATTERNS = [
+    "**/rules/total_rules.py",
+    "**/rules/precise_rules.py",
+    "**/rules/apt_rules.py",
+    "**/rules/*_rules.py",
+]
+
+
+def _should_skip(file_path: str) -> bool:
+    """检查文件是否应跳过扫描"""
+    import fnmatch
+    basename = os.path.basename(file_path)
+    # 跳过规则文件（含检测模式字面字符串，100%自匹配误报）
+    if basename in ("total_rules.py", "precise_rules.py", "apt_rules.py"):
+        return True
+    if basename.endswith("_rules.py"):
+        return True
+    return False
+
+
 def scan_file(file_path: str, rules: Dict[str, Rule]) -> dict:
     """扫描单个文件。
 
@@ -45,6 +66,9 @@ def scan_file(file_path: str, rules: Dict[str, Rule]) -> dict:
         {path, malicious, findings, error}
     """
     result = {"path": file_path, "malicious": False, "findings": [], "error": None}
+    if _should_skip(file_path):
+        result["skipped"] = True
+        return result
     try:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()

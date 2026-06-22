@@ -58,7 +58,7 @@ def analyze_skill(asset_graph: dict, rules: Dict[str, Rule]) -> dict:
         severity_counts[sev] = severity_counts.get(sev, 0) + 1
 
     # 计算风险等级
-    risk_level, risk_score = _calculate_risk_level(all_findings, severity_counts)
+    risk_level, risk_score = _calculate_risk_level(all_findings)
 
     # 生成证据
     evidence = _generate_evidence(all_findings, risk_level)
@@ -99,7 +99,7 @@ def analyze_skill(asset_graph: dict, rules: Dict[str, Rule]) -> dict:
     }
 
 
-def _calculate_risk_level(findings: List[dict], severity_counts: Dict[str, int]) -> tuple:
+def _calculate_risk_level(findings: List[dict]) -> tuple:
     """综合评估风险等级。
 
     评分规则:
@@ -108,17 +108,29 @@ def _calculate_risk_level(findings: List[dict], severity_counts: Dict[str, int])
     - medium 命中: 每个 +3 分
     - low 命中: 每个 +1 分
 
+    文档文件（.md/.txt）中的命中权重减半，因为审计/安全工具的文档
+    包含攻击示例是合法的。
+
     等级阈值:
     - 0-5 分: allow (低风险)
     - 6-25 分: review (中风险，需人工确认)
     - 26+ 分: block (高风险，禁止自动启用)
     """
-    score = (
-        severity_counts.get("critical", 0) * 25
-        + severity_counts.get("high", 0) * 10
-        + severity_counts.get("medium", 0) * 3
-        + severity_counts.get("low", 0) * 1
-    )
+    score = 0
+    for f in findings:
+        file_path = f.get("file_path", "")
+        weight = 0.5 if _is_doc_file(file_path) else 1.0
+        sev = f.get("rule_severity", "medium")
+        if sev == "critical":
+            score += 25 * weight
+        elif sev == "high":
+            score += 10 * weight
+        elif sev == "medium":
+            score += 3 * weight
+        else:
+            score += 1 * weight
+
+    score = int(score)
 
     if score >= 26:
         level = "block"
@@ -128,6 +140,11 @@ def _calculate_risk_level(findings: List[dict], severity_counts: Dict[str, int])
         level = "allow"
 
     return level, score
+
+
+def _is_doc_file(file_path: str) -> bool:
+    """判断是否为文档文件（.md/.txt/.rst）"""
+    return file_path.endswith((".md", ".txt", ".rst", ".markdown"))
 
 
 def _generate_evidence(findings: List[dict], risk_level: str) -> List[dict]:

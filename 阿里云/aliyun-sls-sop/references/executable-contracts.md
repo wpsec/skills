@@ -153,11 +153,49 @@
 - 若前一步只产出症状事实，后续必须有 `conditional_module_query`、`handoff`、`drilldown` 或等价 step 补日志、指标、配置、变更、运行事件、依赖或领域主事实源证据。
 - 如果所有可用数据源都无法确认最终原因，summary step 必须输出 `blocked_by_missing_evidence`、已查询数据源和下一跳补证动作，而不是把“告警成立”当作分析完成。
 
+### 5.1 Kubernetes 重启类 workflow 约束
+
+当 workflow 覆盖 Pod 重启、BackOff、CrashLoopBackOff、OOMKilled、Killing、Unhealthy、Probe failed 或发布后重启时，必须把 K8s event、K8s audit、指标和工作负载日志拆成独立 step。
+
+推荐 step 顺序：
+
+1. `extract_keys`：产出 `namespace`、`pod_name`、`workload_name`、`deployment_name`、`container_name`、`time_window`。
+2. `module_query: k8s-event`：产出 `direct_trigger`、`k8s_reason`、`k8s_message`、`symptom_evidence`。
+3. `conditional_module_query: k8s` 或 `k8s-audit`：当 `direct_trigger` 命中重启 / 退出 / 探针类事件时，查询 `pods/status` 和 Deployment `patch/update`。
+4. `conditional_module_query: prometheus` 或 `metrics`：查询重启计数、last terminated reason、CPU/memory、request/limit 和趋势。
+5. `conditional_module_query: workload`：查询结构化应用日志、stdout、previous logs 或等价运行日志。
+6. `summarize`：输出已确认层级、最终根因状态、缺失证据和下一步补证。
+
+Pod status step 至少产出：
+
+- `pod_status_last_state`
+- `container_exit_reason`
+- `container_exit_code`
+- `restart_count`
+- `waiting_reason`
+- `pod_status_query_status`
+
+Deployment 变更 step 至少产出：
+
+- `deployment_change_evidence`
+- `image_change_evidence`
+- `deployment_actor`
+- `deployment_response_status`
+- `deployment_change_query_status`
+
+约束：
+
+- K8s event 的 `reason/message/count` 只能作为 `direct_trigger / symptom_evidence`。
+- `Error / exitCode=1` 只能作为 `intermediate_cause`，不能直接产出 `final_root_cause`。
+- 若没有查到应用日志，必须产出 `runtime_logstore_query_status` 并区分 `not_configured / no_permission / query_failed / no_matching_data / not_queried`。
+- Deployment `requestObject / responseObject` 只能提取字段摘要，不得输出完整对象。
+
 禁止：
 
 - 前一步没有产出，后一步却直接假设这个结论存在
 - 把“建议查数据库”写成总结散文，而不是结构化条件
 - 把直接触发器、告警规则名称、阈值命中、状态码、事件 reason、错误数量或延迟指标包装成根本原因
+- 把 BackOff、CrashLoopBackOff、Probe failed、`exitCode=1` 或镜像 tag 变化单独包装成最终根因
 
 ## 6. 迁移规则
 

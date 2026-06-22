@@ -30,28 +30,40 @@ def get_test_rules():
     }
 
 
+def _make_findings(severities: list, file_path: str = "/test/script.py") -> list:
+    return [{"file_path": file_path, "rule_severity": s} for s in severities]
+
+
 class TestCalculateRiskLevel:
     """测试风险等级计算"""
 
     def test_allow_low_findings(self):
-        level, score = _calculate_risk_level([], {"critical": 0, "high": 0, "medium": 0, "low": 1})
+        level, score = _calculate_risk_level(_make_findings(["low"]))
         assert level == "allow"
         assert score == 1
 
     def test_review_medium_findings(self):
-        level, score = _calculate_risk_level([], {"critical": 0, "high": 0, "medium": 3, "low": 0})
+        level, score = _calculate_risk_level(_make_findings(["medium"] * 3))
         assert level == "review"
         assert score == 9
 
     def test_block_critical_findings(self):
-        level, score = _calculate_risk_level([], {"critical": 2, "high": 0, "medium": 0, "low": 0})
+        level, score = _calculate_risk_level(_make_findings(["critical"] * 2))
         assert level == "block"
         assert score == 50
 
     def test_block_mixed_high(self):
-        level, score = _calculate_risk_level([], {"critical": 1, "high": 2, "medium": 0, "low": 0})
+        level, score = _calculate_risk_level(
+            _make_findings(["critical"] + ["high"] * 2))
         assert level == "block"
         assert score == 45
+
+    def test_doc_file_half_weight(self):
+        # 3 high @ 10 * 0.5 = 15 → review
+        level, score = _calculate_risk_level(
+            _make_findings(["high"] * 3, file_path="/test/doc.md"))
+        assert level == "review"
+        assert score == 15
 
 
 class TestAnalyzeSkill:

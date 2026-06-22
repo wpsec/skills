@@ -115,6 +115,15 @@
 
 禁止把告警名称、阈值命中、状态码、事件 reason、错误数量、延迟指标、单条 message、应用启动失败、Probe 失败、BackOff、5xx、ERROR 聚合或 `BeanCreationException` 直接写成最终根本原因；证据不足时必须在报告中写“当前只解释到哪一层 / 根因待确认 / 下一跳补证”。当用户问“原因 / 根因 / 为什么”时，报告第一结论必须回答“目前能解释到哪一层、最终根因是否已确认、还缺什么证据”，不能只复述告警成立。
 
+若报告分析的是 Pod 重启、BackOff、CrashLoopBackOff、OOMKilled、Killing、Unhealthy、探针失败或发布后重启，还必须显式包含：
+
+- K8s event 触发证据：`reason / message / count / firstTimestamp / lastTimestamp / object / component`。
+- Pod status 补证：`lastState.terminated.reason / exitCode / finishedAt / restartCount / state.waiting.reason`，未查询、查询失败或无权限必须如实写明。
+- Deployment 变更补证：`patch/update`、镜像 tag、revision、操作主体、状态码；只输出字段摘要，不输出完整 `requestObject / responseObject`。
+- 指标补证：重启计数、last terminated reason、CPU/memory、request/limit 和趋势；MetricStore / PromQL 工具不可用时必须写清缺失点。
+- 日志补证：实际查询过的应用日志、stdout、previous logs 或等价数据源的 `source_alias/project/logstore/time_window/query_status`；未查询不能写“无数据”。
+- 根因层级：`BackOff / CrashLoopBackOff / exitCode=1` 只能说明触发或中间层；最终根因必须来自应用崩溃日志、配置 / 依赖 / 资源限制 / 发布内容差异 / 代码异常底层证据。
+
 ### `SOP.md`
 
 必须包含：
@@ -242,3 +251,4 @@
 - 是否把参考仓库误当成了 skill 的固定输出结构
 - 如果补了 contract，是否补齐了 `schema`、step 输入、条件、事实产出和 handoff
 - 是否避免把真实环境名、本机路径、用户名、Pod 名直接写进长期 schema
+- 若覆盖 K8s 重启类场景，是否补齐了 event、audit pods/status、Deployment 变更、指标和工作负载日志五类证据状态

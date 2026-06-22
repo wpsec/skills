@@ -22,6 +22,7 @@
 - 用户既要 project 级索引，又要每个 logstore 输出五件套模块文档。
 - 用户需要恢复上次中断的生成任务，或者对已生成结果做质量审计。
 - 用户要把说明书式 YAML 收敛成可执行 contract，给联动分析或 step executor 直接消费。
+- 用户要沉淀 Pod 重启、BackOff、CrashLoopBackOff、OOMKilled、发布变更、K8s event / audit / Prometheus / 工作负载日志的联动排障 SOP。
 
 ## 目录结构
 
@@ -70,6 +71,7 @@ python3 scripts/prepare_audit.py .input/my-project --mode sample
 - 如果用户明确要 `overview.md` 或 `SKILL.md`，可以直接按索引型单文档结构交付。
 - 如果输入来自 SLS project，但用户最终要仓库文档，先走 project 级流水线，再把产物折叠成五件套。
 - 如果用户要联动分析能力，默认保留可读文档，再叠加可执行 contract，不把两者对立起来。
+- 如果用户要 K8s 重启类 SOP，默认生成 event、audit pods/status、Deployment 变更、指标和工作负载日志的分层证据链，避免只把 BackOff 写成根因。
 
 ## 建议提问方式
 

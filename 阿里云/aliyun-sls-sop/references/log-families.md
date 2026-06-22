@@ -26,6 +26,9 @@
 | `database_audit` | 数据库审计日志 | `db/sql/user` | `database_audit_log` | `rds_log` | 基线 SQL -> 异常操作 -> 分级响应 -> 根因排查 -> 闭环 |
 | `waf_or_edge_security` | WAF 或边界安全日志 | `client_ip/domain/rule_id/attack_type` | `waf_security_log` | `waf_log` | 攻击趋势 -> 高危命中 -> 处置 -> 溯源 -> 规则优化 |
 | `network_device_or_firewall` | 网络设备或防火墙日志 | `srcip/dstip/device/policy` | `network_device_log` | `net_log` | 访问策略 -> 异常命中 -> 处置 -> 策略核查 -> 闭环 |
+| `k8s_runtime_event` | Kubernetes 运行事件 | `reason/message/object-name/object-namespace/count` | `k8s-event` | `k8s-event` | 运行事件 -> Pod status 补证 -> 指标补证 -> 工作负载日志 -> 根因状态 |
+| `k8s_audit` | Kubernetes 审计日志 | `verb/objectRef/user/responseStatus/requestObject` | `k8s-audit` | `k8s` | 控制面动作 -> 主体归因 -> Pod status / Deployment 变更补证 -> 风险与根因层级 |
+| `prometheus_metric` | Prometheus / MetricStore 指标 | `metric_name/labels/value/timestamp` | `prometheus` | `prometheus` | 指标事实 -> 趋势 / request/limit -> 运行事件 -> 根因状态 |
 | `generic_structured_log` | 通用结构化日志 | 以上都不稳定命中 | `structured_log` | `sls_log` | 字段建模 -> 异常识别 -> 处置建议 -> 后续补充 |
 
 ## 3. 各家族细化规则
@@ -124,6 +127,66 @@
   - 治理：策略优化、白名单和例外梳理
 - 默认不要硬编码：
   - 设备名、策略名、源/目的 IP、热点端口
+
+### `k8s_runtime_event`
+
+- 典型字段：
+  - `reason`、`message`、`type`、`event_type`、`level`
+  - `object-kind`、`object-name`、`object-namespace`
+  - `component`、`reportingComponent`
+  - `count`、`firstTimestamp`、`lastTimestamp`
+- 默认文档集合：
+  - `README.md`
+  - `overview.yaml`
+  - 便携默认：`k8s_event_<env>_datasources.yaml`、`k8s_event_analysis_sop.yaml`、`k8s_event_report_template.md`
+  - 仓库示例：`k8s-event/<...>`
+- 常见分析方向：
+  - 运维：BackOff、CrashLoopBackOff、OOMKilled、Killing、Unhealthy、FailedScheduling、FailedMount
+  - 可用性：Pod 重启、探针失败、调度失败、驱逐
+  - 联动：进入 `k8s_audit` 查 Pod status 和 Deployment 变更，进入 `prometheus_metric` 查资源指标，再进入工作负载日志
+- 默认不要硬编码：
+  - namespace、pod、node、container、镜像 tag、单次 count、一次性事件 ID
+- 根因边界：
+  - K8s event 只确认触发事实；`BackOff`、`Unhealthy` 和 message 不能单独作为最终根因。
+
+### `k8s_audit`
+
+- 典型字段：
+  - `verb`、`objectRef.resource`、`objectRef.subresource`、`objectRef.namespace`、`objectRef.name`
+  - `user.username`、`sourceIPs`、`userAgent`
+  - `responseStatus.code`
+  - `requestObject`、`responseObject`
+- 默认文档集合：
+  - `README.md`
+  - `overview.yaml`
+  - 便携默认：`k8s_audit_<env>_datasources.yaml`、`k8s_audit_analysis_sop.yaml`、`k8s_audit_report_template.md`
+  - 仓库示例：`k8s/<...>`
+- 常见分析方向：
+  - 安全：异常主体、越权、敏感资源操作
+  - 运维：发布变更、Deployment patch/update、Pod status、控制器行为
+  - 补证：为 `k8s_runtime_event` 的重启类事件补 `lastState.terminated`、`exitCode`、`restartCount`、镜像 tag、revision
+- 默认不要硬编码：
+  - 用户名、source IP、requestURI、Pod 名、Deployment 名、镜像仓库、环境变量
+- 安全约束：
+  - `requestObject / responseObject` 只能抽字段摘要，不输出完整对象；尤其不能输出 env、Secret、Token、连接串、密码。
+
+### `prometheus_metric`
+
+- 典型字段：
+  - `metric_name`、labels、timestamp、value
+  - namespace、pod、container、workload、instance
+  - request、limit、usage、rate、reason
+- 默认文档集合：
+  - `README.md`
+  - `overview.yaml`
+  - 便携默认：`prometheus_<env>_datasources.yaml`、`prometheus_analysis_sop.yaml`、`prometheus_report_template.md`
+  - 仓库示例：`prometheus/<...>`
+- 常见分析方向：
+  - 运维：CPU/memory、request/limit、重启计数、last terminated reason、趋势
+  - 可用性：OOM、Evicted、探针、延迟和错误率指标
+  - 联动：为告警和 K8s event 提供指标事实，不替代工作负载日志
+- 默认不要硬编码：
+  - pod、container、instance、节点、临时标签值、单次峰值
 
 ### `generic_structured_log`
 

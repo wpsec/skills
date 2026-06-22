@@ -15,11 +15,17 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 6. 在决定最终产物前，先读 [references/output-modes.md](references/output-modes.md) 和 [references/doc-types.md](references/doc-types.md)。
 7. 在判断日志家族和默认命名之前，读 [references/log-families.md](references/log-families.md)。
 8. 如果用户要沉淀 Prometheus、MetricStore、容器内存、CPU、资源使用率、request/limit、告警事件与 K8s 事件的联动能力，按本文“通用能力：指标告警与资源类 SOP”生成可复用模块和 contract。
-9. 收尾前按 [references/output-contracts.md](references/output-contracts.md) 对照检查。
+9. 如果用户要沉淀 Pod 重启、BackOff、CrashLoopBackOff、OOMKilled、Killing、Unhealthy、发布后重启、镜像变更与 K8s audit 联动能力，按本文“通用能力：Kubernetes 重启与发布变更 SOP”生成可复用模块和 contract。
+10. 收尾前按 [references/output-contracts.md](references/output-contracts.md) 对照检查。
 
 ## 通用规则：可执行联动优先
 
 - SOP 中的 `handoff` 默认是可执行的下一步，而不是报告里的泛泛建议；能从当前证据确定目标模块和数据源时，必须写成“继续查询 / 必须补证”的执行要求。
+- SLS `project`、`logstore`、`metric_store` 中的长哈希后缀不默认视为容器 ID、Pod ID 或一次性运行对象；必须先通过 SLS project / logstore / metricstore 元数据核实其资源类型和稳定性。
+- 已确认稳定的 `project/logstore/metric_store` 只能沉淀到 `*_datasources.yaml`、`log-sources/overview.yaml` 或等价 datasource 配置层；`SOP.md`、`README.md`、模块 `overview.yaml`、workflow 和 analysis_sop 的导航/执行描述优先引用 `source_alias`、`datasource_config` 和运行时解析规则，避免把同一环境事实到处复制。
+- 验证候选 logstore 存在性时，优先使用当前可用的 `aliyun sls ListLogStores` 或等价能力；不要臆造 `sls_list_logstores`、`ListSLSLogstores` 等未在可用工具列表中的工具名。
+- 当工具不可用或权限不足时，报告写清 `source_alias/project/logstore/time_window`、验证状态和失败点；不能把“未验证 / 工具不可用”写成“无数据”。
+- K8s `BackOff`、`CrashLoopBackOff`、`OOMKilled`、`Killing`、`Unhealthy`、Pod 频繁重启等运行事件只能先作为 `direct_trigger / symptom_evidence`；必须继续补 Kubernetes audit `pods/status`、Deployment `patch/update`、指标和工作负载日志，才能判断中间原因或最终根因。
 - 对 `backend -> postgresql` 场景，若应用日志命中数据库连接池、HikariCP、`Connection is closed`、`datasource`、`connection pool`、`SQLTransientConnectionException`、SQL 或事务相关异常，backend 模块必须带着应用侧证据继续查询 PostgreSQL 模块；只有 PostgreSQL 查询失败、无权限、无数据源或工具不可用时，才允许输出 `root_cause_evidence_status=needs_handoff`。
 - 跨模块报告必须压缩成一条可扫读的分析链，例如 `backend 症状 -> PostgreSQL 补证 -> 当前结论 / 缺失证据`，不要把入口模块和联动模块的完整报告简单拼接成超长输出。
 - 自动联动后的报告优先保留结论、关键证据、已确认层级、缺失证据和下一步动作；聚合表、长日志片段和重复背景只保留能支撑判断的最小必要内容。
@@ -55,6 +61,28 @@ description: 根据仓库既有规范、同级目录文档、模板和阿里云 
 - 默认不要把这类问题塞进 backend、database 或 alert-entry 单模块里。告警入口、指标事实、运行事件和工作负载日志必须分层。
 - 如果仓库已有告警入口模块，告警入口只负责 `direct_trigger` 和入口分类；指标类事实必须由 `metrics`、`prometheus` 或等价模块承接。
 - 如果仓库没有指标模块，但已有 MetricStore / Prometheus 数据源或资源类告警，应优先补出一个可复用指标模块五件套，再把根入口、workflow、log-sources、correlation-keys 接上。
+
+### 特殊组合：Kubernetes 运行事件 + Pod 重启根因分析
+
+- 适用于用户提到 Pod 重启、最近重启原因、BackOff、CrashLoopBackOff、OOMKilled、Killing、Unhealthy、Probe failed、发布后异常、镜像 tag 变化、Deployment 回滚或 K8s event / audit 联动分析。
+- 默认不要把这类问题只写进 `k8s-event` 模块。运行事件只能确认触发事实，Pod `status`、Deployment 变更、指标和工作负载日志必须分层补证。
+- 如果仓库已有 `k8s-event`、`k8s` / `k8s-audit`、`prometheus` / `metrics` 和工作负载模块，必须把 workflow 串成可执行链路；如果缺模块，应优先补齐缺失模块五件套或至少在 `log-sources`、`overview`、`analysis_sop` 中声明可执行 handoff。
+- 默认 handoff 顺序：
+
+```text
+k8s-event
+  -> k8s/k8s-audit
+    -> prometheus/metrics
+      -> workload-specific runtime logs
+        -> summarize evidence state
+```
+
+- 若目标环境没有 Kubernetes audit 数据源，也必须在 SOP 中保留 `pods/status / deployment patch` 的补证步骤，并把查询状态写为 `unavailable / no_permission / not_configured`，不能直接省略。
+- 若目标环境有 audit 数据源，Pod 重启类 workflow 必须查询 `pods/status` 子资源，提取 `lastState.terminated.reason`、`lastState.terminated.exitCode`、`lastState.terminated.finishedAt`、`restartCount`、`state.waiting.reason`。
+- 若同窗口出现 Pod 创建、ReplicaSet 切换、镜像拉取、Deployment patch/update 或 revision 变化，必须查询 Deployment 变更，提取镜像 tag、revision、操作主体和状态码。
+- Deployment 的 `requestObject / responseObject` 可能包含环境变量、Token、连接串或密码；报告和模板只允许输出字段摘要，不得粘贴完整对象。
+- 如果应用日志或 stdout 没有命中，报告必须写清实际查询过的 `source_alias/project/logstore/time_window`、logstore 是否存在、是否可访问、查询语句或关键条件；未查询只能写“未查询”，查询失败写“查询失败”，不能写成“无数据”。
+- 只有拿到应用崩溃日志、previous logs、配置差异、依赖异常、资源限制、发布内容差异或代码异常最底层证据，才能把最终根因状态写为 `confirmed`。`Error / exitCode=1` 只能确认进程异常退出这一中间层。
 
 ### 特殊组合：Project 索引 + 模块五件套
 
@@ -257,6 +285,73 @@ Prometheus / 云监控告警事件的对象标签提取顺序默认是：
 - 不能只用“依据不足”结束原因类问题；必须给出候选原因排序、最可能解释、反证和下一步确认动作。
 - 不能在没有 request/limit 或历史基线时输出明确使用率结论。
 - 不能把 checkpoint、业务 ERROR、探针失败、BackOff 单独解释为内存或 CPU 根因。
+
+## 通用能力：Kubernetes 重启与发布变更 SOP
+
+这部分能力用于任何需要沉淀“运行事件 -> Pod status -> 发布变更 -> 指标 -> 工作负载日志 -> 根因证据”的 SOP 仓库，不绑定具体环境、project、logstore、namespace 或 Pod。
+
+### 1. 推荐模块分层
+
+- `k8s-event`：主事实源是 Kubernetes event，负责确认 `reason / message / object / count / firstTimestamp / lastTimestamp / component`，产出 `direct_trigger` 和 `symptom_evidence`。
+- `k8s` 或 `k8s-audit`：主事实源是 Kubernetes audit，负责控制面补证和主体归因，重启类问题必须补 `pods/status` 与 Deployment `patch/update`。
+- `prometheus` 或 `metrics`：负责重启计数、last terminated reason、CPU/memory、request/limit 和趋势补证。
+- 工作负载模块：负责 previous logs、runtime stdout、应用结构化日志、依赖日志和配置证据。
+- `log-sources/overview.yaml`：必须登记 K8s event、K8s audit、MetricStore/PromQL、工作负载日志之间的 `source_role` 和可解析别名。
+
+### 2. Pod 重启 workflow 默认步骤
+
+1. 提取 `namespace`、`pod_name`、`workload_name`、`deployment_name`、`container_name`、`alert_time / time_window`。
+2. 查询 K8s event，确认 `BackOff / CrashLoopBackOff / OOMKilled / Killing / Unhealthy / FailedScheduling / FailedMount` 等直接触发器。
+3. 对重启或退出类触发器，查询 K8s audit `pods/status`，提取 `lastState.terminated.reason`、`exitCode`、`finishedAt`、`restartCount`、`state.waiting.reason`。
+4. 查询同窗口 Deployment `patch/update`，提取镜像 tag、revision、操作主体、状态码和必要字段摘要。
+5. 查询 Prometheus / MetricStore，补 `kube_pod_container_status_restarts_total`、`kube_pod_container_status_last_terminated_reason`、CPU/memory、request/limit 和趋势。
+6. 验证并查询工作负载日志源，包括结构化应用日志、stdout、previous logs 或平台可用的等价日志。
+7. 汇总为 `direct_trigger -> pod_status_evidence -> deployment_change_evidence -> metric_evidence -> runtime_log_evidence -> final_root_cause`，并明确已确认层级和缺失证据。
+
+### 3. 必须产出的 facts
+
+- `direct_trigger`
+- `symptom_evidence`
+- `pod_status_last_state`
+- `container_exit_reason`
+- `container_exit_code`
+- `restart_count`
+- `waiting_reason`
+- `deployment_change_evidence`
+- `image_change_evidence`
+- `restart_metric_evidence`
+- `last_terminated_reason`
+- `resource_trend_evidence`
+- `runtime_logstore_query_status`
+- `root_cause_evidence`
+- `root_cause_evidence_status`
+- `confirmed_cause_level`
+- `next_evidence_action`
+
+### 4. 判断边界
+
+- `BackOff`、`CrashLoopBackOff` 和探针失败是触发事实，不是根因。
+- `lastState.terminated.reason=Error` 与 `exitCode=1` 是容器进程异常退出的中间原因，不是最终应用根因。
+- Deployment 镜像 tag 或 revision 变化是发布 / 变更证据；只有结合退出日志、配置差异、回滚恢复或依赖异常，才能继续定为最终根因。
+- `OOMKilled` 可以作为较强中间原因，但仍要补 memory limit、working set、request/limit 和应用内存日志，判断是资源限制、内存泄漏还是突发流量。
+- 没有应用日志不等于应用没有报错；必须区分“日志源不存在 / 未配置 / 无权限 / 查询失败 / 查询无匹配数据 / 采集延迟”。
+
+### 5. 报告模板要求
+
+K8s 重启类报告模板必须包含：
+
+- 运行事件证据：`reason / message / count / firstTimestamp / lastTimestamp / object / component`
+- Pod status 补证：`lastState.terminated.reason / exitCode / finishedAt / restartCount / waiting reason`
+- 发布变更补证：Deployment `patch/update`、镜像 tag、revision、主体、状态码
+- 指标补证：重启计数、last terminated reason、CPU/memory、request/limit、趋势
+- 日志补证：实际查询过的应用日志 / stdout / previous logs source、时间窗、查询状态
+- 根因证据链：已确认层级、证据状态、缺失证据和下一步一锤定音动作
+
+### 6. 安全与脱敏
+
+- 不输出完整 `requestObject`、`responseObject`、环境变量、Secret 引用值、Token、连接串、密码、JWT 或完整启动参数。
+- 可输出镜像仓库和 tag、revision、资源名、响应状态码、字段路径和脱敏摘要。
+- 如确需说明敏感字段存在，只写字段路径和风险类型，例如 `env contains datasource config`，不要输出值。
 
 ### 8. Root cause contract
 

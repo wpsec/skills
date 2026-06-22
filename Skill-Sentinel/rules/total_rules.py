@@ -26,7 +26,7 @@ MALICIOUS_PATTERNS = {
     r"(?i)\beval\s*\(": "动态执行代码 (eval)",
     r"(?i)\bexec\s*\(": "动态执行代码 (exec)",
     r"(?i)\bexecfile\s*\(": "执行文件代码 (execfile)",
-    r"(?i)(?<!re\.)\bcompile\s*\(": "动态编译代码",
+    r"(?i)(?<!re\.)(?<!Pattern\.)(?<!RegExp\.)\bcompile\s*\(": "动态编译代码",
     r"(?i)\b__import__\s*\(": "动态导入模块",
     r"(?i)\bpty\.spawn\s*\(": "伪终端生成 (反弹shell)",
     r"(?i)\bos\.execlp?\s*\(": "替换进程执行",
