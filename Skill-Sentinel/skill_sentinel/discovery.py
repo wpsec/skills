@@ -4,7 +4,7 @@
 import os
 import re
 import yaml
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 # 常见 AI 工具的 Skill 搜索路径
@@ -129,7 +129,7 @@ def collect_assets(skill_root: str) -> Dict[str, List[str]]:
 
     script_exts = {".py", ".sh", ".bash", ".js", ".ts", ".rb", ".pl", ".php", ".ps1", ".bat", ".cmd"}
     config_exts = {".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".env", ".xml"}
-    archive_exts = {".zip", ".tar.gz", ".tar", ".tgz", ".gz", ".rar", ".7z"}
+    archive_exts = {".zip", ".tar.gz", ".tar", ".tgz", ".rar", ".7z"}
     doc_exts = {".md", ".txt", ".rst", ".pdf"}
     template_exts = {".html", ".jinja", ".j2", ".tmpl", ".hbs", ".ejs"}
     # 排除常见的非代码文件
@@ -174,6 +174,7 @@ def resolve_references(skill_md_body: str, skill_root: str) -> List[Dict[str, st
         [{type, path, line}]
     """
     references = []
+    seen = set()
 
     # 1. Markdown 链接: [text](path)
     md_link_pattern = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
@@ -182,11 +183,14 @@ def resolve_references(skill_md_body: str, skill_root: str) -> List[Dict[str, st
             ref_path = match.group(2)
             if ref_path and not ref_path.startswith(("http://", "https://", "#")):
                 full_path = os.path.normpath(os.path.join(skill_root, ref_path))
-                references.append({
-                    "type": "markdown_link",
-                    "path": full_path,
-                    "line": line_no,
-                })
+                item = ("markdown_link", full_path, line_no)
+                if item not in seen:
+                    references.append({
+                        "type": "markdown_link",
+                        "path": full_path,
+                        "line": line_no,
+                    })
+                    seen.add(item)
 
     # 2. 反引号中的文件路径: `path/to/file`
     backtick_pattern = re.compile(r"`([^`]+\.(?:py|sh|js|ts|json|yaml|yml|toml|md|txt|cfg|conf))`")
@@ -195,11 +199,14 @@ def resolve_references(skill_md_body: str, skill_root: str) -> List[Dict[str, st
             ref_path = match.group(1)
             if not ref_path.startswith(("http://", "https://", "/")):
                 full_path = os.path.normpath(os.path.join(skill_root, ref_path))
-                references.append({
-                    "type": "inline_path",
-                    "path": full_path,
-                    "line": line_no,
-                })
+                item = ("inline_path", full_path, line_no)
+                if item not in seen:
+                    references.append({
+                        "type": "inline_path",
+                        "path": full_path,
+                        "line": line_no,
+                    })
+                    seen.add(item)
 
     # 3. 代码块中的文件路径引用
     # 匹配类似 "file: path/to/file.py" 或 "see path/to/file.sh"
@@ -212,11 +219,14 @@ def resolve_references(skill_md_body: str, skill_root: str) -> List[Dict[str, st
             ref_path = match.group(1)
             if not ref_path.startswith(("http://", "https://", "/")):
                 full_path = os.path.normpath(os.path.join(skill_root, ref_path))
-                references.append({
-                    "type": "explicit_ref",
-                    "path": full_path,
-                    "line": line_no,
-                })
+                item = ("explicit_ref", full_path, line_no)
+                if item not in seen:
+                    references.append({
+                        "type": "explicit_ref",
+                        "path": full_path,
+                        "line": line_no,
+                    })
+                    seen.add(item)
 
     return references
 
@@ -224,6 +234,7 @@ def resolve_references(skill_md_body: str, skill_root: str) -> List[Dict[str, st
 def find_common_tool_skills() -> List[str]:
     """查找系统中常见 AI 工具的 Skill 目录"""
     found = []
+    seen = set()
     for path in COMMON_SKILL_PATHS:
         expanded = os.path.expanduser(path)
         if os.path.isdir(expanded):
@@ -231,10 +242,7 @@ def find_common_tool_skills() -> List[str]:
                 item_path = os.path.join(expanded, item)
                 if os.path.isdir(item_path):
                     root = find_skill_root(item_path)
-                    if root:
+                    if root and root not in seen:
                         found.append(root)
-        elif os.path.isdir(expanded):
-            root = find_skill_root(expanded)
-            if root:
-                found.append(root)
+                        seen.add(root)
     return found

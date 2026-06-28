@@ -1,11 +1,12 @@
 # skill_sentinel/rules.py
 # 规则加载、管理与分类
 
+import importlib.util
 import os
 import re
-import importlib.util
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import Dict, List, Optional, Tuple
 
 
 # 风险分类定义
@@ -62,11 +63,27 @@ def load_rules_from_file(filepath: str) -> Dict[str, str]:
         raise ValueError(f"{filepath} 中未找到 MALICIOUS_PATTERNS 字典")
 
 
-def load_rules(rule_files: List[str]) -> Dict[str, Rule]:
-    """加载多个规则文件，合并为统一的 Rule 对象字典。
+def _normalize_rule_files(rule_files: List[str]) -> Tuple[Tuple[str, float], ...]:
+    """生成可缓存的规则文件签名。
 
-    返回 {pattern_str: Rule} 映射。
+    使用绝对路径和 mtime 作为 cache key，避免单次批量扫描重复编译规则。
     """
+    signature = []
+    for filepath in rule_files:
+        abs_path = os.path.abspath(filepath)
+        signature.append((abs_path, os.path.getmtime(abs_path)))
+    return tuple(signature)
+
+
+@lru_cache(maxsize=8)
+def _load_rules_cached(signature: Tuple[Tuple[str, float], ...]) -> Dict[str, Rule]:
+    """按签名缓存规则编译结果。"""
+    rule_paths = [path for path, _ in signature]
+    return _load_rules_uncached(rule_paths)
+
+
+def _load_rules_uncached(rule_files: List[str]) -> Dict[str, Rule]:
+    """执行实际的规则加载和编译。"""
     all_rules: Dict[str, Rule] = {}
     for filepath in rule_files:
         patterns = load_rules_from_file(filepath)
@@ -84,6 +101,38 @@ def load_rules(rule_files: List[str]) -> Dict[str, Rule]:
                 )
                 all_rules[pattern_str] = rule
     return all_rules
+
+
+def load_rules(rule_files: List[str]) -> Dict[str, Rule]:
+    """加载多个规则文件，合并为统一的 Rule 对象字典。
+
+    返回 {pattern_str: Rule} 映射。
+    """
+    signature = _normalize_rule_files(rule_files)
+    return _load_rules_cached(signature)
+
+
+def select_rules_for_target(
+    file_path: str,
+    rules: Dict[str, Rule],
+    target_kind: Optional[str] = None,
+) -> Dict[str, Rule]:
+    """按目标类型选择规则子集。
+
+    这里不做复杂语义剪枝，只做确定性的文件类型降噪：
+    - 配置文件和归档成员默认不扫描提示注入类规则
+    - 其余目标保留全量规则
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    config_exts = {".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".env", ".xml"}
+
+    if target_kind == "config" or ext in config_exts:
+        return {pattern: rule for pattern, rule in rules.items() if rule.category_id != 1}
+
+    if target_kind == "archive_member" and ext in config_exts:
+        return {pattern: rule for pattern, rule in rules.items() if rule.category_id != 1}
+
+    return rules
 
 
 def get_rules_by_category(rules: Dict[str, Rule], category_id: int) -> List[Rule]:

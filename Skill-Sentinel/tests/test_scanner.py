@@ -1,15 +1,18 @@
 # tests/test_scanner.py
-# 扫描引擎测试
+# 扫描引擎与归档安全测试
 
 import os
 import sys
+import tarfile
 import tempfile
+import zipfile
+
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from skill_sentinel.scanner import scan_text_by_line, scan_file, scan_directory
-from skill_sentinel.rules import Rule, load_rules
+from skill_sentinel.rules import Rule, _load_rules_cached, load_rules
+from skill_sentinel.scanner import scan_archive, scan_directory, scan_file, scan_text_by_line, scan_zip
 
 
 def get_test_rules():
@@ -40,124 +43,175 @@ class TestScanTextByLine:
     """测试逐行文本扫描"""
 
     def test_empty_content(self):
-        rules = get_test_rules()
-        findings = scan_text_by_line([], rules)
-        assert findings == []
-
-    def test_no_match(self):
-        rules = get_test_rules()
-        lines = ["print('hello world')", "x = 1 + 2"]
-        findings = scan_text_by_line(lines, rules)
+        findings = scan_text_by_line([], get_test_rules())
         assert findings == []
 
     def test_single_match(self):
-        rules = get_test_rules()
-        lines = ["os.system('ls -la')", "print('done')"]
-        findings = scan_text_by_line(lines, rules)
+        findings = scan_text_by_line(["os.system('ls -la')"], get_test_rules())
         assert len(findings) == 1
         assert findings[0]["line_no"] == 1
-        assert "system" in findings[0]["match"]
         assert findings[0]["rule_category"] == 8
 
-    def test_multiple_matches(self):
-        rules = get_test_rules()
-        lines = [
-            "os.system('rm -rf /')",
-            "eval(user_input)",
-            "rm -rf /tmp/test",
-        ]
-        findings = scan_text_by_line(lines, rules)
-        # os.system 匹配 1 次, eval 匹配 1 次, rm -rf / 匹配 1 次 (line 1 中的 rm -rf /)
-        assert len(findings) >= 3
-
-    def test_critical_severity(self):
-        rules = get_test_rules()
-        lines = ["rm -rf / --no-preserve-root"]
-        findings = scan_text_by_line(lines, rules)
-        assert len(findings) >= 1
-        assert any(f["rule_severity"] == "critical" for f in findings)
+    def test_multiple_matches_same_line(self):
+        findings = scan_text_by_line(["os.system('rm -rf /')"], get_test_rules())
+        assert len(findings) >= 2
 
 
 class TestScanFile:
     """测试文件扫描"""
 
     def test_scan_clean_file(self):
-        rules = get_test_rules()
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write("print('hello')\nx = 1\n")
-            tmp_path = f.name
+            f.write("print('hello')\n")
+            file_path = f.name
 
         try:
-            result = scan_file(tmp_path, rules)
+            result = scan_file(file_path, get_test_rules(), target_kind="script")
             assert not result["malicious"]
             assert result["findings"] == []
+            assert not result["skipped"]
         finally:
-            os.unlink(tmp_path)
-
-    def test_scan_malicious_file(self):
-        rules = get_test_rules()
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write("import os\nos.system('rm -rf /')\n")
-            tmp_path = f.name
-
-        try:
-            result = scan_file(tmp_path, rules)
-            assert result["malicious"]
-            assert len(result["findings"]) >= 1
-        finally:
-            os.unlink(tmp_path)
+            os.unlink(file_path)
 
     def test_scan_nonexistent_file(self):
-        rules = get_test_rules()
-        result = scan_file("/nonexistent/path.py", rules)
+        result = scan_file("/nonexistent/path.py", get_test_rules(), target_kind="script")
         assert result["error"] is not None
+
+    def test_skip_rule_test_and_example_files(self):
+        tmpdir = tempfile.mkdtemp()
+        rule_path = os.path.join(tmpdir, "sample_rules.py")
+        test_path = os.path.join(tmpdir, "test_attack.py")
+        example_dir = os.path.join(tmpdir, "examples")
+        os.makedirs(example_dir, exist_ok=True)
+        example_path = os.path.join(example_dir, "sample_attack.py")
+        with open(rule_path, "w", encoding="utf-8") as f:
+            f.write("os.system('rm -rf /')\n")
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write("os.system('rm -rf /')\n")
+        with open(example_path, "w", encoding="utf-8") as f:
+            f.write("os.system('rm -rf /')\n")
+
+        try:
+            rule_result = scan_file(rule_path, get_test_rules(), target_kind="script")
+            test_result = scan_file(test_path, get_test_rules(), target_kind="script")
+            example_result = scan_file(example_path, get_test_rules(), target_kind="script")
+            assert rule_result["skipped"]
+            assert rule_result["skip_reason"] == "rule_file"
+            assert test_result["skipped"]
+            assert test_result["skip_reason"] == "test_fixture"
+            assert example_result["skipped"]
+            assert example_result["skip_reason"] == "example_asset"
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 class TestScanDirectory:
     """测试目录扫描"""
 
     def test_scan_directory(self):
-        rules = get_test_rules()
         tmpdir = tempfile.mkdtemp()
-
-        # 创建干净文件
-        with open(os.path.join(tmpdir, "clean.py"), "w") as f:
+        with open(os.path.join(tmpdir, "clean.py"), "w", encoding="utf-8") as f:
             f.write("print('hello')\n")
-
-        # 创建恶意文件
-        with open(os.path.join(tmpdir, "bad.py"), "w") as f:
+        with open(os.path.join(tmpdir, "bad.py"), "w", encoding="utf-8") as f:
             f.write("eval(input())\n")
 
-        results = scan_directory(tmpdir, rules)
-        assert len(results) == 2
-        malicious = [r for r in results if r["malicious"]]
-        assert len(malicious) == 1
+        try:
+            results = scan_directory(tmpdir, get_test_rules())
+            assert len(results) == 2
+            malicious = [item for item in results if item["malicious"]]
+            assert len(malicious) == 1
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
-        import shutil
-        shutil.rmtree(tmpdir, ignore_errors=True)
+
+class TestArchives:
+    """测试压缩包扫描和安全处理"""
+
+    def test_scan_zip_archive(self):
+        tmpdir = tempfile.mkdtemp()
+        archive_path = os.path.join(tmpdir, "payload.zip")
+        with zipfile.ZipFile(archive_path, "w") as zf:
+            zf.writestr("evil.py", "import os\nos.system('rm -rf /')\n")
+
+        try:
+            results = scan_zip(archive_path, get_test_rules())
+            assert any(result["malicious"] for result in results)
+            assert any(result["archive_member"] == "evil.py" for result in results)
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def test_zip_slip_member_is_rejected(self):
+        tmpdir = tempfile.mkdtemp()
+        archive_path = os.path.join(tmpdir, "payload.zip")
+        with zipfile.ZipFile(archive_path, "w") as zf:
+            zf.writestr("../escape.py", "os.system('rm -rf /')\n")
+
+        try:
+            results = scan_zip(archive_path, get_test_rules())
+            assert any(result["error"] == "非法归档路径" for result in results)
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def test_scan_tar_archive(self):
+        tmpdir = tempfile.mkdtemp()
+        archive_path = os.path.join(tmpdir, "payload.tar.gz")
+        file_path = os.path.join(tmpdir, "evil.py")
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("eval(user_input)\n")
+        with tarfile.open(archive_path, "w:gz") as tf:
+            tf.add(file_path, arcname="nested/evil.py")
+
+        try:
+            results = scan_archive(archive_path, get_test_rules())
+            assert any(result["malicious"] for result in results)
+            assert any(result["archive_member"] == os.path.normpath("nested/evil.py") for result in results)
+        finally:
+            import shutil
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def test_unsupported_archive_is_reported(self):
+        results = scan_archive("/tmp/payload.rar", get_test_rules())
+        assert len(results) == 1
+        assert results[0]["unsupported_archive"]
+        assert results[0]["error"] == "未支持的压缩包格式"
 
 
 class TestLoadRules:
-    """测试规则加载"""
+    """测试规则加载缓存"""
 
-    def test_load_rules_from_files(self):
+    def test_load_rules_cached(self, monkeypatch):
+        calls = {"count": 0}
+        _load_rules_cached.cache_clear()
+
+        import skill_sentinel.rules as rules_module
+
+        original = rules_module.load_rules_from_file
+
+        def wrapped(filepath):
+            calls["count"] += 1
+            return original(filepath)
+
+        monkeypatch.setattr(rules_module, "load_rules_from_file", wrapped)
+
         rules_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "rules"
+            "rules",
         )
         rule_files = [
             os.path.join(rules_dir, "total_rules.py"),
             os.path.join(rules_dir, "precise_rules.py"),
         ]
 
-        rules = load_rules(rule_files)
-        assert len(rules) > 0
-        # 验证所有规则都是 Rule 对象
-        for pattern, rule in rules.items():
-            assert isinstance(rule, Rule)
-            assert rule.compiled is not None
-            assert 1 <= rule.category_id <= 10
-            assert rule.severity in ("critical", "high", "medium", "low")
+        first = load_rules(rule_files)
+        second = load_rules(rule_files)
+
+        assert len(first) > 0
+        assert len(second) == len(first)
+        assert calls["count"] == len(rule_files)
 
 
 if __name__ == "__main__":

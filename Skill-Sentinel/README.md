@@ -235,14 +235,23 @@ python3 -m skill_sentinel /path/to/skill --rules my_rules.py
   "skill_name": "example-skill",
   "skill_path": "/path/to/skill",
   "scan_time": "2026-06-22T16:49:17",
-  "risk_level": "block",
-  "risk_score": 94,
+  "risk_level": "review",
+  "risk_score": 18,
   "summary": {
-    "total_files": 123,
-    "scanned_files": 159,
-    "total_findings": 57,
+    "discovered_files": 123,
+    "scanned_targets": 41,
+    "skipped_targets": 7,
+    "errored_targets": 1,
+    "total_findings": 4,
+    "raw_findings_count": 9,
     "categories": { "8": 36, "5": 18, "3": 3 },
-    "severity_counts": { "critical": 0, "high": 3, "medium": 5, "low": 49 }
+    "severity_counts": { "critical": 0, "high": 1, "medium": 2, "low": 1 },
+    "confidence_counts": { "high": 1, "medium": 2, "low": 1 },
+    "impact_scope_counts": {
+      "single_file": 1,
+      "multi_file_local": 2,
+      "archive_embedded": 1
+    }
   },
   "findings": [
     {
@@ -251,22 +260,59 @@ python3 -m skill_sentinel /path/to/skill --rules my_rules.py
       "rule": "执行系统命令 (subprocess)",
       "severity": "medium",
       "category": 8,
-      "match": "subprocess.run"
+      "match": "subprocess.run",
+      "confidence": "high",
+      "impact_scope": "multi_file_local",
+      "chain": [
+        { "type": "reference", "path": "/path/to/scripts/run.py", "line": 8, "detail": "markdown_link" },
+        { "type": "dependency", "path": "/path/to/helper.py", "line": null, "detail": "python_import" }
+      ],
+      "related_files": ["/path/to/scripts/run.py", "/path/to/helper.py"]
+    }
+  ],
+  "raw_findings": [
+    {
+      "file": "/path/to/helper.py",
+      "line": 42,
+      "rule": "执行系统命令 (subprocess)",
+      "severity": "medium",
+      "category": 8,
+      "match": "subprocess.run",
+      "line_content": "subprocess.run(cmd, shell=True)"
     }
   ],
   "evidence": [
     {
-      "file": "/path/to/script.py",
+      "file": "/path/to/helper.py",
       "line": 42,
       "rule": "执行系统命令 (subprocess)",
       "category": "隐蔽下载与远程执行",
       "severity": "medium",
-      "reason": "第 42 行匹配到规则: 执行系统命令 (subprocess)",
-      "suggestion": "检查命令执行上下文，确认输入来源是否可信"
+      "confidence": "high",
+      "impact_scope": "multi_file_local",
+      "reason": "第 42 行命中执行系统命令；链路包含 reference -> dependency -> command_execution",
+      "suggestion": "检查命令执行、下载执行或动态解释的输入来源，确认是否受控"
     }
   ],
+  "decision_factors": {
+    "raw_findings_count": 9,
+    "structured_findings_count": 4,
+    "top_contributors": [
+      {
+        "file": "/path/to/helper.py",
+        "line": 42,
+        "rule": "执行系统命令 (subprocess)",
+        "severity": "medium",
+        "confidence": "high",
+        "impact_scope": "multi_file_local",
+        "score": 5.06
+      }
+    ]
+  },
   "asset_graph_summary": {
     "entry_file": "...",
+    "nodes_count": 39,
+    "edges_count": 11,
     "scripts_count": 39,
     "configs_count": 64,
     "archives_count": 0,
@@ -288,15 +334,16 @@ python3 -m skill_sentinel /path/to/skill --rules my_rules.py
 ```plain
 SkillSentinel/
   skill_sentinel/       # 核心 Python 包
-    scanner.py          # 正则扫描引擎
+    scanner.py          # 目标扫描、归档安全、正则引擎
     rules.py            # 规则加载、分类、严重程度
     discovery.py        # Skill 发现与结构识别
-    graph.py            # 资产图构建与遍历
-    analyzer.py         # 风险评分与证据生成
+    graph.py            # 资产图、引用链与依赖链
+    structured.py       # Phase 2 结构化聚合与命令链分析
+    analyzer.py         # 风险评分、decision_factors、结果组装
     reporter.py         # JSON/终端输出
   rules/                # 规则文件
   scripts/              # CLI 入口
-  tests/                # 测试套件（26 个用例）
+  tests/                # 测试套件（29 个用例）
   docs/                 # 文档
 ```
 
@@ -304,9 +351,15 @@ SkillSentinel/
 
 | 阶段                | 方法         | 优势                       | 局限                   |
 | ------------------- | ------------ | -------------------------- | ---------------------- |
-| **Phase 1**（当前） | 正则规则扫描 | 快、易解释、易扩展         | 误报偏多、语义理解有限 |
-| **Phase 2**         | 结构化扫描   | 引用链、命令链、依赖链分析 | 需更多上下文           |
-| **Phase 3**         | 策略评分     | 严重程度+置信度+影响范围   | 需更多训练数据         |
+| Phase 1             | 正则规则扫描 | 快、易解释、易扩展         | 误报偏多、语义理解有限 |
+| **Phase 2（当前）** | 结构化扫描   | 引用链、命令链、依赖链分析 | 仍是轻量静态分析       |
+| Phase 3             | 策略评分     | 严重程度+置信度+影响范围   | 需更多样本校准         |
+
+### 当前状态
+
+- 已完成：`raw_findings` / `structured_findings` 双层输出，引用链、依赖链、命令链聚合，`confidence` 和 `impact_scope` 评分，ZIP/TAR 安全扫描，样例/测试/规则文件降噪。
+- 未完成：跨语言 AST 级数据流、参数传播分析、跨文件命令拼接追踪、基于样本校准的 Phase 3 策略权重。
+- 当前定位：**可解释的轻量静态门禁**，优先减少“同一风险重复报警”，而不是追求全量程序分析。
 
 ## 实测数据
 
