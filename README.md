@@ -55,17 +55,17 @@ bash sync-skills.sh
 
 ## MCP 配置
 
-`mcp/` 目录存放 MCP 服务器配置备份,用于跨机还原或参考。与 skill 不同,MCP 配置无法用软链同步,需手动复制到对应 CLI 的配置位置。
+`mcp/` 目录存放 MCP 服务器配置备份与安装说明,用于跨机还原。与 skill 不同,MCP 配置无法用软链同步,需手动复制到对应 CLI 的配置位置,并安装依赖工具。
 
-| 目录 | 对应 CLI | 还原路径 |
+| 目录 | 对应 CLI | 还原方式 |
 |---|---|---|
-| `mcp/codex/mcp-servers.toml` | Codex | 合并到 `~/.codex/config.toml` 的 `[mcp_servers]` 段 |
-| `mcp/claude/` | Claude | 复制到 `~/.claude/mcp.json`(当前仅有 burp-ai-agent 本地调试,不入库) |
+| `mcp/codex/` | Codex | 见 `mcp/codex/README.md` |
+| `mcp/claude/` | Claude | 见 `mcp/claude/README.md`(当前仅有 burp-ai-agent 本地调试,不入库) |
 
-当前纳入仓库的 MCP 服务:
-
-- **codegraph**:代码知识图谱索引,为 Codex 提供符号级代码搜索
-- **sequential-thinking**:结构化思考工具
+| 服务 | 来源 | 安装 |
+|------|------|------|
+| codegraph | [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) | `go install github.com/colbymchenry/codegraph@latest` |
+| sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | 需 Node.js,`npx` 自动拉取 |
 
 ## 通过 Claude Code 使用
 

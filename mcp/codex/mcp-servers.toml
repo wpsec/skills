@@ -2,6 +2,11 @@
 # 摘录自 ~/.codex/config.toml 的 [mcp_servers] 段
 # 还原方式:将本文件内容合并到 ~/.codex/config.toml 的 [mcp_servers] 下
 
+# 安装前提
+#   codegraph:    go install github.com/colbymchenry/codegraph@latest
+#                 来源 https://github.com/colbymchenry/codegraph
+#   sequential-thinking: 需要 Node.js + npx,首次使用自动拉取 npm 包
+
 [mcp_servers.codegraph]
 type = "stdio"
 command = "codegraph"
