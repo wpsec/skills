@@ -1,5 +1,7 @@
 # skills
 
+个人备份
+
 仓库用于存放可复用的本地 skill 与 MCP 配置。Codex 与 Claude Code 共用本仓库:两边各自的 `skills/` 目录通过软链指向这里的 skill,改一处两边生效。
 
 ## 仓库结构
