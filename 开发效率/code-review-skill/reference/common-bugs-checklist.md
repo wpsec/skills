@@ -153,15 +153,28 @@ Quick-reference bug patterns organized by category. For detailed code examples, 
 
 ## Java / Spring Boot
 
-- [ ] POJO/DTO with manual boilerplate instead of `record`
-- [ ] Traditional switch missing `break` (use switch expressions)
+- [ ] POJO/DTO with manual boilerplate instead of `record` *(Java 17+)*
+- [ ] Traditional switch missing `break` (use switch expressions) *(Java 14+)*
 - [ ] Field injection instead of constructor injection
 - [ ] JPA N+1 query (missing `fetch join` or `@EntityGraph`)
-- [ ] Incorrect `equals`/`hashCode` on JPA entities (use business key, not ID)
+- [ ] Incorrect `equals`/`hashCode` on JPA entities (avoid `@Data`; prefer stable business key or null-safe id — never all lazy fields)
 - [ ] `Optional.get()` without `isPresent()` check
 - [ ] Stream operations with side effects
 
-**Full guide:** [Java Review Guide](java.md)
+**Full guide:** [Java Review Guide](java.md) (17/21 + Boot 3)
+
+## Java 8 / Spring Boot 2 (Legacy)
+
+- [ ] Shared `SimpleDateFormat` / legacy `Date` instead of `java.time`
+- [ ] `Collectors.toMap` with null values or missing merge function
+- [ ] `Optional` used as field/parameter, or `isPresent()`+`get()` as null-check
+- [ ] `CompletableFuture.supplyAsync` I/O on `commonPool` (no explicit executor)
+- [ ] `RestTemplate` without connect/read timeouts
+- [ ] `@Transactional` on private method or same-class self-invocation
+- [ ] `parallelStream` with shared mutable state
+- [ ] Mixing `javax.*` and `jakarta.*` on Boot 2
+
+**Full guide:** [Java 8 Review Guide](java8.md)
 
 ## PHP
 
@@ -177,6 +190,31 @@ Quick-reference bug patterns organized by category. For detailed code examples, 
 - [ ] File uploads using client-provided names or missing MIME/size validation
 
 **Full guide:** [PHP Review Guide](php.md)
+
+## Ruby / Rails
+
+- [ ] Condition assumes `0`, `""`, or `[]` is falsey
+- [ ] Mutable Hash/Array default shared across entries (`Hash.new([])`, `Array.new(3, [])`)
+- [ ] Bang method return value treated as the transformed object
+- [ ] Bare or broad `rescue` hides unrelated failures or exposes `error.message`
+- [ ] Dynamic `send`, `constantize`, `eval`, or SQL fragment controlled by user input
+- [ ] Untrusted data passed to `Marshal.load`, unsafe YAML loading, or an interpolated shell command
+- [ ] Strong parameters use `permit!`, `to_unsafe_h`, or an empty hash allowlist
+- [ ] Nested `params.expect` arrays use a flat shape instead of the required `[[...]]` form
+- [ ] Active Record query interpolates values or dynamic identifiers into SQL
+- [ ] `Model.find(params[:id])` loads a record before ownership or policy scoping (IDOR)
+- [ ] `redirect_to` accepts a user-controlled URL with `allow_other_host: true` (open redirect)
+- [ ] Browser-authenticated state changes skip CSRF protection or use unsafe session cookie flags
+- [ ] Association access in a loop causes N+1 queries
+- [ ] Model validation lacks a matching database constraint for a critical invariant
+- [ ] `update_all` / `delete_all` unexpectedly skips callbacks and validations
+- [ ] Bulk writes can drift a `counter_cache` without reconciliation
+- [ ] Active Job retry can duplicate a payment, email, or other external side effect
+- [ ] GlobalID job argument can be deleted before deserialization
+- [ ] Transaction contains external side effects that cannot roll back
+- [ ] Retried create/payment request can duplicate committed work without an idempotency key
+
+**Full guide:** [Ruby and Rails Review Guide](ruby.md)
 
 ## Swift
 
