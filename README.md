@@ -2,6 +2,16 @@
 
 仓库用于存放可复用的本地 skill 与 MCP 配置。Codex 与 Claude Code 共用本仓库:两边各自的 `skills/` 目录通过软链指向这里的 skill,改一处两边生效。
 
+## 仓库结构
+
+```
+security/      安全审计 (skill-sentinel + java-* ×10)
+productivity/  开发效率 (code-review-skill)
+content/       内容处理 (humanizer-zh)
+infra/         基础设施 (aliyun-sls-sop)
+mcp/           MCP 配置备份
+```
+
 ## 目录
 
 ### 安全审计
