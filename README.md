@@ -5,11 +5,11 @@
 ## 仓库结构
 
 ```
-security/      安全审计 (skill-sentinel + java-* ×10)
-productivity/  开发效率 (code-review-skill)
-content/       内容处理 (humanizer-zh)
-infra/         基础设施 (aliyun-sls-sop)
-mcp/           MCP 配置备份
+安全审计/     skill-sentinel + java-* ×10
+开发效率/     code-review-skill
+内容处理/     humanizer-zh
+基础设施/     aliyun-sls-sop
+mcp/          MCP 配置备份
 ```
 
 ## 目录
