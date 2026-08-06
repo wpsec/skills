@@ -56,6 +56,20 @@ bash sync-skills.sh
 
 新增 skill 后跑一次脚本两边即生效;删除 skill 需手动删两边对应的旧软链(脚本不主动清理)。
 
+## MCP 配置
+
+`mcp/` 目录存放 MCP 服务器配置备份,用于跨机还原或参考。与 skill 不同,MCP 配置无法用软链同步,需手动复制到对应 CLI 的配置位置。
+
+| 目录 | 对应 CLI | 还原路径 |
+|---|---|---|
+| `mcp/codex/mcp-servers.toml` | Codex | 合并到 `~/.codex/config.toml` 的 `[mcp_servers]` 段 |
+| `mcp/claude/` | Claude | 复制到 `~/.claude/mcp.json`(当前仅有 burp-ai-agent 本地调试,不入库) |
+
+当前纳入仓库的 MCP 服务:
+
+- **codegraph**:代码知识图谱索引,为 Codex 提供符号级代码搜索
+- **sequential-thinking**:结构化思考工具
+
 ## 通过 Claude Code 使用
 
 - 对话里直接点名 skill,例如 `aliyun-sls-sop` 或 `skill-sentinel`。

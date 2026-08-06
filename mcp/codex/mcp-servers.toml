@@ -1,0 +1,21 @@
+# Codex MCP 服务器配置
+# 摘录自 ~/.codex/config.toml 的 [mcp_servers] 段
+# 还原方式:将本文件内容合并到 ~/.codex/config.toml 的 [mcp_servers] 下
+
+[mcp_servers.codegraph]
+type = "stdio"
+command = "codegraph"
+args = ["serve", "--mcp"]
+
+[mcp_servers.codegraph.tools.codegraph_callers]
+approval_mode = "approve"
+
+[mcp_servers.codegraph.tools.codegraph_search]
+approval_mode = "approve"
+
+[mcp_servers.codegraph.tools.codegraph_status]
+approval_mode = "approve"
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
