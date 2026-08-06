@@ -56,3 +56,44 @@ while IFS= read -r skillmd; do
     echo "linked $name -> $src_dir  [$tgt]"
   done
 done < <(find "$REPO" -name SKILL.md -not -path '*/.git/*' -not -path '*skill_sandbox*')
+
+# ── MCP 配置检查 ──────────────────────────────────────────────
+# MCP 无法像 skill 一样用软链同步,这里只做状态检查并给出操作提示。
+
+check_mcp() {
+  local changed=0
+  echo
+  echo ">>> MCP 配置检查"
+
+  if ! command -v codegraph &>/dev/null; then
+    echo "[!] codegraph 未安装"
+    echo "    go install github.com/colbymchenry/codegraph@latest"
+    echo "    来源 https://github.com/colbymchenry/codegraph"
+    changed=1
+  fi
+
+  if ! command -v node &>/dev/null; then
+    echo "[!] Node.js 未安装,sequential-thinking MCP 需要"
+    changed=1
+  fi
+
+  if [ -f "$REPO/mcp/codex/mcp-servers.toml" ]; then
+    echo "[!] Codex MCP 需手动合并"
+    echo "    将 mcp/codex/mcp-servers.toml 合并到 ~/.codex/config.toml 的 [mcp_servers] 段"
+    changed=1
+  fi
+
+  if [ -f "$REPO/mcp/claude/mcp.json" ]; then
+    if ! diff -q "$REPO/mcp/claude/mcp.json" "$HOME/.claude/mcp.json" &>/dev/null; then
+      echo "[!] Claude MCP 配置已变更"
+      echo "    cp $REPO/mcp/claude/mcp.json $HOME/.claude/mcp.json"
+      changed=1
+    fi
+  fi
+
+  if [ "$changed" -eq 0 ]; then
+    echo "[OK] MCP 配置无变化"
+  fi
+}
+
+check_mcp
