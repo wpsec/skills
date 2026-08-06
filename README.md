@@ -20,7 +20,7 @@ mcp/          MCP 配置备份
 
 | skill | 说明 | 来源 |
 |---|---|---|
-| `skill-sentinel` | Skill 安全扫描哨兵,在安装/加载前进行安全审计。基于 839 条正则规则,覆盖 10 大风险分类和 14 个 APT 攻击技术领域 | 本仓库自研 |
+| `skill-sentinel` | Skill 安全扫描哨兵,在安装/加载前进行安全审计。基于 839 条正则规则,覆盖 10 大风险分类和 14 个 APT 攻击技术领域 | 自维护 |
 | `audit-skills` | 多语言源码安全审计,支持 Java / .NET / PHP 源码/部署产物/反编译产物。涵盖路由提取、鉴权审计、组件漏洞扫描、调用链追踪、SQL 注入/XXE/文件读取/文件上传漏洞检测,含 BurpSuite 原始 HTTP 请求包证据输出 | [RuoJi6/audit-skills](https://github.com/RuoJi6/audit-skills/) |
 
 ### 开发效率
@@ -39,7 +39,7 @@ mcp/          MCP 配置备份
 
 | skill | 说明 | 来源 |
 |---|---|---|
-| `aliyun-sls-sop` | 根据 CSV、CSV.GZ 与同级文档约束,生成或维护 SOP、README、overview、datasource、report template 等模块文档。同时支持从 SLS project 抽取 index/dashboard/alert 等资产 | 本仓库自研 |
+| `aliyun-sls-sop` | 根据 CSV、CSV.GZ 与同级文档约束,生成或维护 SOP、README、overview、datasource、report template 等模块文档。同时支持从 SLS project 抽取 index/dashboard/alert 等资产 | 自维护 |
 
 ## 同步到本地 Codex / Claude
 
