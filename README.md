@@ -7,7 +7,7 @@
 ```
 安全审计/     skill-sentinel + audit-skills
 开发效率/     code-review-skill
-内容处理/     humanizer-zh
+内容处理/     stop-slop-cn
 基础设施/     aliyun-sls-sop
 mcp/          MCP 配置备份
 ```
@@ -33,7 +33,7 @@ mcp/          MCP 配置备份
 
 | skill | 说明 | 来源 |
 |---|---|---|
-| `humanizer-zh` | 去除中文文本的 AI 写作痕迹,翻译自 blader/humanizer | [op7418/humanizer-zh](https://github.com/op7418/humanizer-zh) |
+| `stop-slop-cn` | 去除中英文文本的 AI 写作痕迹。融合 stop-slop 的英文去 AI 框架和 humanizer-zh 的中文 AI 模式检测,覆盖 14 类中文专项模式,自维护 | 基于 [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop) 和 [op7418/humanizer-zh](https://github.com/op7418/humanizer-zh) |
 
 ### 基础设施
 
@@ -66,6 +66,7 @@ bash sync-skills.sh
 |------|------|------|
 | codegraph | [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) | `go install github.com/colbymchenry/codegraph@latest` |
 | sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | 需 Node.js,`npx` 自动拉取 |
+| prompt-optimizer | [linshenkx/prompt-optimizer](https://github.com/linshenkx/prompt-optimizer) | Docker 部署,见 `mcp/prompt-optimizer/README.md` |
 
 ## 通过 Claude Code 使用
 
