@@ -5,15 +5,25 @@
 ## 目录
 
 ### `阿里云/`
+
+> 来源:本仓库自研
+
 - `aliyun-sls-sop`:根据 CSV、CSV.GZ 与同级文档约束,生成或维护 SOP、README、overview、datasource、report template 等模块文档。
 
 ### `Skill-Sentinel/`
+
+> 来源:本仓库自研
+
 - `skill-sentinel`:Skill 安全扫描哨兵,在 Skill 安装/加载前进行安全审计,输出结构化风险结论。基于 839 条正则规则,覆盖 10 大风险分类和 14 个 APT 攻击技术领域。
 
 ### `java-audit/`
+
+> 来源: [RuoJi6/audit-skills](https://github.com/RuoJi6/audit-skills/)
+
 Java 安全审计套件,10 个 skill 协作完成从路由测绘到漏洞扫描的完整审计流水线:
+
 - `java-route-mapper` / `java-route-tracer`:路由测绘与调用追踪
-- `java-shared`:公共规则与工具
+- `java-shared`:公共规则与工具(无 SKILL.md,非独立 skill)
 - `java-audit-pipeline`:编排整条审计流水线
 - `java-auth-audit`:认证与鉴权审计
 - `java-sql-audit`:SQL 注入审计
@@ -23,9 +33,15 @@ Java 安全审计套件,10 个 skill 协作完成从路由测绘到漏洞扫描�
 - `java-vuln-scanner`:综合漏洞扫描
 
 ### `code-review-skill/`
+
+> 来源: [awesome-skills/code-review-skill](https://github.com/awesome-skills/code-review-skill)
+
 - `code-review-skill`:多语言 PR 审查指南(React 19 / Vue 3 / Angular 17+ / Svelte 5 / Rust / Java / Go / Python / C# / Kotlin / Swift / NestJS / C/C++ / PHP 等),含各语言专项 reference 和 pr-analyzer.py。
 
 ### `humanizer-zh/`
+
+> 来源: [op7418/humanizer-zh](https://github.com/op7418/humanizer-zh)
+
 - `humanizer-zh`:去除中文文本的 AI 写作痕迹,翻译自 blader/humanizer。
 
 ## 同步到本地 Codex / Claude
