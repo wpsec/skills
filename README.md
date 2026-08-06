@@ -1,48 +1,45 @@
 # skills
 
-仓库用于存放可复用的本地 skill。Codex 与 Claude Code 共用本仓库:两边各自的 `skills/` 目录通过软链指向这里的 skill,改一处两边生效。
+仓库用于存放可复用的本地 skill 与 MCP 配置。Codex 与 Claude Code 共用本仓库:两边各自的 `skills/` 目录通过软链指向这里的 skill,改一处两边生效。
 
 ## 目录
 
-### `阿里云/`
+### 安全审计
 
-> 来源:本仓库自研
+> 覆盖 Skill 入口安全扫描与 Java Web 全链路漏洞审计
 
-- `aliyun-sls-sop`:根据 CSV、CSV.GZ 与同级文档约束,生成或维护 SOP、README、overview、datasource、report template 等模块文档。
+| skill | 说明 | 来源 |
+|---|---|---|
+| `skill-sentinel` | Skill 安全扫描哨兵,在安装/加载前进行安全审计。基于 839 条正则规则,覆盖 10 大风险分类和 14 个 APT 攻击技术领域 | 本仓库自研 |
+| `java-route-mapper` | 从源码提取所有 HTTP 路由与参数结构,支持 Spring MVC / Servlet / JAX-RS / Struts 2 / CXF | [RuoJi6/audit-skills](https://github.com/RuoJi6/audit-skills/) |
+| `java-route-tracer` | 追踪从 Controller 到 DAO 的完整调用链,输出每层文件位置、方法签名和可传入参数 | 同上 |
+| `java-audit-pipeline` | 编排整条审计流水线,调度路由提取、鉴权审计、组件漏洞、调用链追踪等子 skill | 同上 |
+| `java-auth-audit` | 识别鉴权实现,检测鉴权绕过漏洞和越权访问缺陷。支持 Shiro / Spring Security / JWT / Filter | 同上 |
+| `java-sql-audit` | SQL 注入审计,追踪参数到 SQL 拼接点。支持 JDBC / MyBatis / Hibernate | 同上 |
+| `java-xxe-audit` | XXE 漏洞审计,检测 XML 解析器配置与外部实体引用 | 同上 |
+| `java-file-read-audit` | 任意文件读取审计,追踪路径参数到 File 操作 | 同上 |
+| `java-file-upload-audit` | 任意文件上传审计,检测上传点与文件类型校验逻辑 | 同上 |
+| `java-vuln-scanner` | 扫描 pom.xml / build.gradle / jar 中的第三方依赖,匹配已知 CVE 漏洞规则 | 同上 |
 
-### `Skill-Sentinel/`
+> `java-shared` 为公共规则与工具库(无 SKILL.md,非独立 skill),不列入。
 
-> 来源:本仓库自研
+### 开发效率
 
-- `skill-sentinel`:Skill 安全扫描哨兵,在 Skill 安装/加载前进行安全审计,输出结构化风险结论。基于 839 条正则规则,覆盖 10 大风险分类和 14 个 APT 攻击技术领域。
+| skill | 说明 | 来源 |
+|---|---|---|
+| `code-review-skill` | 多语言 PR 审查指南,覆盖 React 19 / Vue 3 / Angular 17+ / Svelte 5 / Rust / Java / Go / Python / C# / Kotlin / Swift / NestJS / C/C++ / PHP / Django 等,含各语言专项 reference 和 pr-analyzer.py | [awesome-skills/code-review-skill](https://github.com/awesome-skills/code-review-skill) |
 
-### `java-audit/`
+### 内容处理
 
-> 来源: [RuoJi6/audit-skills](https://github.com/RuoJi6/audit-skills/)
+| skill | 说明 | 来源 |
+|---|---|---|
+| `humanizer-zh` | 去除中文文本的 AI 写作痕迹,翻译自 blader/humanizer | [op7418/humanizer-zh](https://github.com/op7418/humanizer-zh) |
 
-Java 安全审计套件,10 个 skill 协作完成从路由测绘到漏洞扫描的完整审计流水线:
+### 基础设施
 
-- `java-route-mapper` / `java-route-tracer`:路由测绘与调用追踪
-- `java-shared`:公共规则与工具(无 SKILL.md,非独立 skill)
-- `java-audit-pipeline`:编排整条审计流水线
-- `java-auth-audit`:认证与鉴权审计
-- `java-sql-audit`:SQL 注入审计
-- `java-xxe-audit`:XXE 审计
-- `java-file-read-audit`:任意文件读取审计
-- `java-file-upload-audit`:任意文件上传审计
-- `java-vuln-scanner`:综合漏洞扫描
-
-### `code-review-skill/`
-
-> 来源: [awesome-skills/code-review-skill](https://github.com/awesome-skills/code-review-skill)
-
-- `code-review-skill`:多语言 PR 审查指南(React 19 / Vue 3 / Angular 17+ / Svelte 5 / Rust / Java / Go / Python / C# / Kotlin / Swift / NestJS / C/C++ / PHP 等),含各语言专项 reference 和 pr-analyzer.py。
-
-### `humanizer-zh/`
-
-> 来源: [op7418/humanizer-zh](https://github.com/op7418/humanizer-zh)
-
-- `humanizer-zh`:去除中文文本的 AI 写作痕迹,翻译自 blader/humanizer。
+| skill | 说明 | 来源 |
+|---|---|---|
+| `aliyun-sls-sop` | 根据 CSV、CSV.GZ 与同级文档约束,生成或维护 SOP、README、overview、datasource、report template 等模块文档。同时支持从 SLS project 抽取 index/dashboard/alert 等资产 | 本仓库自研 |
 
 ## 同步到本地 Codex / Claude
 
