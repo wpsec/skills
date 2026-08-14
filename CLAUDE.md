@@ -33,8 +33,11 @@
 + **只读优先**：在未明确授权时，默认使用只读命令（如 `cat`、`ls`、`git status`）。
 + **破坏性操作确认**：涉及 `rm`、`git reset --hard`、`kubectl delete` 等操作前，必须输出警告并等待用户二次确认。
 
-## 5. Skill/MCP
-+ codegraph：新项目首先检查是否有使用codegraph，如果没有，先初始化，执行： codegraph init 命令。处理代码相关任务时，优先通过 CodeGraph 查询上下文（依赖关系、函数调用等），而不是盲目搜索。
-+ sequential-thinking：复杂任务（多步骤、架构设计、问题诊断）必须拆解为有序步骤（8-20步），允许修订和分支，最终仅输出行动计划及关键依据，不暴露推理链。
-+ stop-slop-cn：杜绝一切冗余、客套、低价值填充内容，确保每条回复信息密度最大、直奔主题。
-+ Prompt-Optimizer：所有 Agent 的 System Prompt 必须经过 Prompt‑Optimizer 的 至少一轮优化，优化记录（含版本、模型、得分）存入项目 /docs/prompts/ 目录。
+## 5. Skill/MCP/文档
++ **共享关系**：本仓库是 Codex 与 Claude Code 共用的 skill 维护源。`AGENTS.md` 为 `CLAUDE.md` 的软链，更新 `CLAUDE.md` 即同时更新两者。
++ **同步方式**：新增、删除或迁移 skill 后，执行 `bash sync-skills.sh`，将本仓库中的 skill 软链同步到 `~/.codex/skills` 与 `~/.claude/skills`。
++ **MCP 维护边界**：当前仓库只维护 `codegraph` 与 `sequential-thinking` 的模板配置。`prompt-optimizer` 已下线，不再写入维护仓库或本地活跃配置。
++ **推荐工作流**：需求或方案澄清优先走 `grill-me -> to-spec -> to-tickets`。`grill-me` 负责追问和收敛，`to-spec` 负责整理规格，`to-tickets` 负责拆成可执行 tickets。
++ **codegraph**：新项目首先检查是否有使用 codegraph，如果没有，先初始化，执行 `codegraph init` 命令。处理代码相关任务时，优先通过 CodeGraph 查询上下文（依赖关系、函数调用等），而不是盲目搜索。
++ **sequential-thinking**：复杂任务（多步骤、架构设计、问题诊断）必须拆解为有序步骤（8-20 步），允许修订和分支，最终仅输出行动计划及关键依据，不暴露推理链。
++ **stop-slop-cn**：杜绝一切冗余、客套、低价值填充内容，确保每条回复信息密度最大、直奔主题。

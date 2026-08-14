@@ -24,7 +24,3 @@ approval_mode = "approve"
 [mcp_servers.sequential-thinking]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-
-[mcp_servers.prompt-optimizer]
-type = "url"
-url = "http://localhost:8081/mcp"

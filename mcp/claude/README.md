@@ -8,6 +8,6 @@
 
 ## 当前配置
 
-- `prompt-optimizer`:HTTP MCP,需先 Docker 部署(见 `mcp/prompt-optimizer/README.md`)
+当前仓库未维护 Claude 专属 MCP 服务。
 
 > 本地调试工具 `burp-ai-agent` 不入库

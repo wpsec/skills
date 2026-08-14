@@ -23,3 +23,10 @@ rad.json
 #Test results file
 TestResults.xml
 .codegraph/
+
+# Local AI translation credentials for the AISC report generator
+安全审计/alibabacloud-aisc-skill-inspection/.env
+
+# Local AISC scan artifacts may contain sample or recent findings
+安全审计/alibabacloud-aisc-skill-inspection/check-report.json
+安全审计/alibabacloud-aisc-skill-inspection/reports/
