@@ -8,7 +8,7 @@
 
 ```
 安全审计/     skill-sentinel + audit-skills + alibabacloud-aisc-skill-inspection
-开发效率/     code-review-skill + grill-me + to-spec + to-tickets
+开发效率/     code-review-skill + daisyui + grill-me + to-spec + to-tickets
 内容处理/     stop-slop-cn
 基础设施/     aliyun-sls-sop
 mcp/          MCP 配置备份
@@ -31,6 +31,7 @@ mcp/          MCP 配置备份
 | skill | 说明 | 来源 |
 |---|---|---|
 | `code-review-skill` | 多语言 PR 审查指南,覆盖 React 19 / Vue 3 / Angular 17+ / Svelte 5 / Rust / Java / Go / Python / C# / Kotlin / Swift / NestJS / C/C++ / PHP / Django 等,含各语言专项 reference 和 pr-analyzer.py | [awesome-skills/code-review-skill](https://github.com/awesome-skills/code-review-skill) |
+| `daisyui` | daisyUI 5 官方 skill,面向 Tailwind CSS 4 的组件、颜色、主题、安装与配置规则。适合写 HTML / JSX / Tailwind UI 时按组件文档渐进式取用上下文 | [saadeghi/daisyui](https://github.com/saadeghi/daisyui/tree/master/skills/daisyui) |
 | `grill-me` | 对方案或设计做连续追问,沿决策树逐层收敛到共享理解。适合需求澄清、方案拷打、实现前对齐 | [mattpocock/skills: grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) |
 | `to-spec` | 将当前对话与代码库上下文收敛成 spec,不重新采访用户。适合需求已经讲清、需要沉淀规格说明时使用 | [mattpocock/skills: to-spec](https://github.com/mattpocock/skills/tree/main/skills/engineering/to-spec) |
 | `to-tickets` | 将 plan/spec/当前对话拆成 tracer-bullet tickets,并显式标注 blocking edges。适合把规格转成 agent 可执行工作项 | [mattpocock/skills: to-tickets](https://github.com/mattpocock/skills/tree/main/skills/engineering/to-tickets) |
@@ -83,6 +84,7 @@ bash sync-skills.sh
 示例:
 
 - `使用 aliyun-sls-sop,根据这份 CSV 日志生成一套对齐现有目录的 SOP`
+- `使用 daisyui,给这个页面补一版带主题切换的设置页`
 - `/skill-sentinel` 扫描所有已安装 Skill
 - `使用 grill-me,把这个功能方案先拷打清楚`
 - `使用 to-spec,把当前对话整理成一份 spec`
