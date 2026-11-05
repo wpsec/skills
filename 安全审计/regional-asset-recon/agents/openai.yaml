@@ -1,0 +1,4 @@
+interface:
+  display_name: "区域资产搜集与归档"
+  short_description: "归档授权范围内的区域资产线索并生成 Excel 报告"
+  default_prompt: "使用 $regional-asset-recon，目标区域=；输入目录=（可选）。先整理官方单位目录和本地材料；只有授权依据及明确资产范围齐备时，才查询 FOFA/Shodan 被动索引并生成去重报告。"

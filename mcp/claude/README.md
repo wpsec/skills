@@ -2,12 +2,15 @@
 
 ## 还原步骤
 
-将 `mcp.json` 复制到 `~/.claude/mcp.json`。Claude Code 启动时自动加载。
+将 `mcp.json` 中的 `mcpServers` 合并到 `~/.claude.json` 的 `mcpServers` 对象。Claude Code 启动时加载用户级 MCP 配置。
 
-如需合并到已有配置,手动将 `mcpServers` 下的条目合并。
+CodeGraph 设置了 `alwaysLoad`，让 `codegraph_explore` 在会话开始时可用。重启 Claude Code 后生效。
 
-## 当前配置
+## 服务列表
 
-当前仓库未维护 Claude 专属 MCP 服务。
+| 服务 | 来源 | 安装方式 |
+|------|------|----------|
+| codegraph | [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) | `npm install -g @colbymchenry/codegraph` |
+| sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | Node.js 24+，`npx -y` 使用 2.1.1 |
 
 > 本地调试工具 `burp-ai-agent` 不入库

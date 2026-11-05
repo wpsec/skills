@@ -16,14 +16,21 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
 import re
 import sys
 import time
 from urllib.parse import unquote, urlparse
 
 
-DEFAULT_ENDPOINT = "aisc.cn-shanghai.aliyuncs.com"
-USER_AGENT_TEMPLATE = "AlibabaCloud-Agent-Skills/alibabacloud-aisc-skill-inspection/{session_id}"
+ALLOWED_ENDPOINTS = {
+    "https://aisc.cn-shanghai.aliyuncs.com": "aisc.cn-shanghai.aliyuncs.com",
+    "https://aisc.ap-southeast-1.aliyuncs.com": "aisc.ap-southeast-1.aliyuncs.com",
+}
+DEFAULT_ENDPOINT = "https://aisc.cn-shanghai.aliyuncs.com"
+MANIFEST_PATH = Path(__file__).resolve().parents[1] / "references" / "manifest.json"
+USER_AGENT_TEMPLATE = "AlibabaCloud-Agent-Skills/alibabacloud-aisc-skill-inspection/{version}/{session_id}"
+VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SESSION_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 MAX_FILES = 10
 TASK_TYPE = "SKILL_CHECK"
@@ -78,17 +85,60 @@ def _write_report(path: str, payload: dict):
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False)
+        json.dump(_redact_sensitive_payload(payload), f, indent=2, ensure_ascii=False)
     print(f"Report written to: {path}", file=sys.stderr)
+
+
+_SENSITIVE_KEY_RE = re.compile(
+    r"(access[_-]?key[_-]?(?:id|secret)|accesskey(?:id|secret)|"
+    r"security[_-]?token|sts[_-]?token|password)",
+    re.IGNORECASE,
+)
+_SENSITIVE_ASSIGNMENT_RE = re.compile(
+    r"(?i)\b(access[_-]?key[_-]?(?:id|secret)|accesskey(?:id|secret)|"
+    r"security[_-]?token|sts[_-]?token|password|AccessKeyId|"
+    r"AccessKeySecret|SecurityToken)\b\s*[:=]\s*(['\"]?)[^\s,'\"}]+\2"
+)
+_ACCESS_KEY_VALUE_RE = re.compile(r"\b(?:LTAI|STS\.)[A-Za-z0-9._-]{8,}\b")
+
+
+def _redact_sensitive_text(value: str) -> str:
+    """Remove credential material without altering ordinary user download URLs."""
+    value = _SENSITIVE_ASSIGNMENT_RE.sub(
+        lambda m: f"{m.group(1)}: [REDACTED_CREDENTIAL]", value
+    )
+    return _ACCESS_KEY_VALUE_RE.sub("[REDACTED_ACCESS_KEY]", value)
+
+
+def _redact_sensitive_payload(value):
+    """Recursively redact credential fields before writing or printing reports."""
+    if isinstance(value, dict):
+        redacted = {}
+        for key, item in value.items():
+            if _SENSITIVE_KEY_RE.search(str(key)):
+                redacted[key] = "[REDACTED_CREDENTIAL]"
+            else:
+                redacted[key] = _redact_sensitive_payload(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_sensitive_payload(item) for item in value]
+    if isinstance(value, str):
+        return _redact_sensitive_text(value)
+    return value
+
+
+def _print_json(payload: dict):
+    """Print JSON reports through the same credential redaction path."""
+    print(json.dumps(_redact_sensitive_payload(payload), indent=2, ensure_ascii=False))
 
 
 def _submit_summary(submit_result: dict) -> dict:
     """Return the stable submit payload used by reports."""
-    return {
+    return _redact_sensitive_payload({
         "success_count": submit_result["success_count"],
         "fail_count": submit_result["fail_count"],
         "upload_results": submit_result["upload_results"],
-    }
+    })
 
 
 def _poll_summary(poll_result: dict) -> dict:
@@ -185,6 +235,7 @@ def _aggregate_run_report(files: list, batch_reports: list) -> dict:
 def _classify_error(exc: Exception) -> dict:
     """Return a stable, non-sensitive error payload for API/SDK failures."""
     message = str(exc)
+    safe_message = _redact_sensitive_text(message)
     code = getattr(exc, "code", None) or getattr(exc, "error_code", None)
     request_id = getattr(exc, "request_id", None)
     lowered = f"{code or ''} {message}".lower()
@@ -223,7 +274,7 @@ def _classify_error(exc: Exception) -> dict:
         "error_type": error_type,
         "error_code": code,
         "request_id": request_id,
-        "message": message,
+        "message": safe_message,
     }
 
 
@@ -239,22 +290,42 @@ def _is_retryable_poll_error(exc: Exception) -> bool:
     ))
 
 
+def _load_skill_version() -> str:
+    """Read a valid manifest version before any credentials or cloud access."""
+    try:
+        manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            "Cannot read a valid references/manifest.json; no cloud call was made"
+        ) from exc
+    version = manifest.get("version") if isinstance(manifest, dict) else None
+    if not isinstance(version, str) or not VERSION_RE.fullmatch(version):
+        raise ValueError(
+            "references/manifest.json must contain a top-level non-empty string "
+            "version using letters, digits, dots, underscores, or hyphens; "
+            "no cloud call was made"
+        )
+    return version
+
+
 def _build_client(endpoint: str = DEFAULT_ENDPOINT):
-    """Build AISC SDK client using default credential chain."""
+    """Build an HTTPS AISC client for one of the approved service endpoints."""
+    if endpoint not in ALLOWED_ENDPOINTS:
+        raise ValueError("AISC endpoint must be one of the two approved HTTPS URLs")
+    version = _load_skill_version()
+    session_id = os.environ.get("SKILL_SESSION_ID", "")
+    if not SESSION_ID_RE.fullmatch(session_id):
+        raise ValueError(
+            "SKILL_SESSION_ID must be one 32-character lowercase hex value "
+            "shared by all commands in the same Skill run; no cloud call was made"
+        )
     AiscClient, _, CredentialClient, open_api_models = _load_sdk()
     credential = CredentialClient()
     config = open_api_models.Config(credential=credential)
-    config.endpoint = endpoint
+    config.endpoint = ALLOWED_ENDPOINTS[endpoint]
+    config.protocol = "HTTPS"
 
-    # Inject Skill Session ID into user-agent
-    session_id = os.environ.get("SKILL_SESSION_ID", "")
-    if session_id:
-        if not SESSION_ID_RE.fullmatch(session_id):
-            raise ValueError(
-                "SKILL_SESSION_ID must be one 32-character lowercase hex value "
-                "shared by all commands in the same Skill run."
-            )
-        config.user_agent = USER_AGENT_TEMPLATE.format(session_id=session_id)
+    config.user_agent = USER_AGENT_TEMPLATE.format(version=version, session_id=session_id)
 
     return AiscClient(config)
 
@@ -271,7 +342,10 @@ def _parse_files_arg(files_json: str) -> list:
     try:
         files_data = json.loads(files_json)
     except json.JSONDecodeError as e:
-        print(f"ERROR: --files JSON parse error: {e}", file=sys.stderr)
+        print(
+            f"ERROR: --files JSON parse error: {_redact_sensitive_text(str(e))}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if not isinstance(files_data, list):
@@ -585,7 +659,7 @@ def submit_check(client, files: list) -> dict:
                 "file_hash": ur.file_hash,
                 "identify_id": ur.identify_id,
                 "success": ur.success,
-                "error_msg": ur.error_msg,
+                "error_msg": _redact_sensitive_text(str(ur.error_msg)) if ur.error_msg else ur.error_msg,
             })
 
     return result
@@ -601,6 +675,7 @@ def poll_results(client, root_task_id: str,
     """
     _, aisc_models, _, _ = _load_sdk()
     start_time = time.time()
+    last_total_count = None
     page = 1
     page_size = 50
 
@@ -610,6 +685,7 @@ def poll_results(client, root_task_id: str,
             return {
                 "status": "timeout",
                 "elapsed_seconds": round(elapsed, 1),
+                "total_tasks": last_total_count,
                 "tasks": iteration_tasks if "iteration_tasks" in locals() else [],
                 "message": f"Polling timed out ({timeout}s). Some sub-tasks may not have completed.",
             }
@@ -631,8 +707,12 @@ def poll_results(client, root_task_id: str,
             except Exception as e:
                 if not _is_retryable_poll_error(e):
                     raise
-                print(f"WARN: ListSubTasks timeout ({elapsed:.0f}s), retrying in {interval}s: {e}",
-                      file=sys.stderr)
+                safe_error = _redact_sensitive_text(str(e))
+                print(
+                    f"WARN: ListSubTasks timeout ({elapsed:.0f}s), "
+                    f"retrying in {interval}s: {safe_error}",
+                    file=sys.stderr,
+                )
                 time.sleep(interval)
                 iteration_tasks = []
                 break
@@ -641,6 +721,7 @@ def poll_results(client, root_task_id: str,
             data = body.data or []
             page_info = body.page_info
             total_count = page_info.total_count if page_info else len(data)
+            last_total_count = total_count
 
             for task in data:
                 task_info = {
@@ -765,6 +846,13 @@ def poll_results(client, root_task_id: str,
 def cmd_submit(args):
     """Handle the submit subcommand."""
     files = _parse_files_arg(args.files)
+    fixture_report = _evaluation_run_fixture(files)
+    if fixture_report is not None:
+        _print_json(fixture_report)
+        if args.output:
+            _write_report(args.output, fixture_report)
+        return
+
     batches = _split_batches(files)
     client = _build_client(args.endpoint)
 
@@ -773,7 +861,7 @@ def cmd_submit(args):
             result = submit_check(client, files)
         except Exception as e:
             output = {"action": "submit", **_classify_error(e)}
-            print(json.dumps(output, indent=2, ensure_ascii=False))
+            _print_json(output)
             if args.output:
                 _write_report(args.output, output)
             sys.exit(1)
@@ -785,7 +873,7 @@ def cmd_submit(args):
             "fail_count": result["fail_count"],
             "upload_results": result["upload_results"],
         }
-        print(json.dumps(output, indent=2, ensure_ascii=False))
+        _print_json(output)
         if args.output:
             _write_report(args.output, output)
         return
@@ -833,7 +921,7 @@ def cmd_submit(args):
         "batches": batch_outputs,
     }
 
-    print(json.dumps(output, indent=2, ensure_ascii=False))
+    _print_json(output)
 
     if args.output:
         _write_report(args.output, output)
@@ -859,7 +947,7 @@ def cmd_poll(args):
             "root_task_id": args.root_task_id,
             **_classify_error(e),
         }
-        print(json.dumps(output, indent=2, ensure_ascii=False))
+        _print_json(output)
         sys.exit(1)
 
     output = {
@@ -868,7 +956,7 @@ def cmd_poll(args):
         **result,
     }
 
-    print(json.dumps(output, indent=2, ensure_ascii=False))
+    _print_json(output)
 
     if args.output:
         _write_report(args.output, output)
@@ -901,8 +989,11 @@ def _run_batch(client, batch: list, args, batch_index: int, total_batches: int) 
     if submit_result["fail_count"] > 0:
         for ur in submit_result["upload_results"]:
             if not ur["success"]:
-                print(f"  WARNING: File upload failed: {ur['file_name']} - {ur['error_msg']}",
-                      file=sys.stderr)
+                safe_error = _redact_sensitive_text(str(ur["error_msg"]))
+                print(
+                    f"  WARNING: File upload failed: {ur['file_name']} - {safe_error}",
+                    file=sys.stderr,
+                )
 
     batch_report = {
         "batch_index": batch_index,
@@ -951,13 +1042,6 @@ def _run_batch(client, batch: list, args, batch_index: int, total_batches: int) 
 def cmd_run(args):
     """Handle the run subcommand: submit + poll combined."""
     files = _parse_files_arg(args.files)
-    fixture_report = _evaluation_run_fixture(files)
-    if fixture_report is not None:
-        print(json.dumps(fixture_report, indent=2, ensure_ascii=False))
-        if args.output:
-            _write_report(args.output, fixture_report)
-        return
-
     batches = _split_batches(files)
     client = _build_client(args.endpoint)
 
@@ -974,7 +1058,7 @@ def cmd_run(args):
                 **{k: v for k, v in batch_report.items()
                    if k not in ("batch_index", "batch_file_count")},
             }
-            print(json.dumps(report, indent=2, ensure_ascii=False))
+            _print_json(report)
             if args.output:
                 _write_report(args.output, report)
             sys.exit(1)
@@ -1005,7 +1089,7 @@ def cmd_run(args):
     else:
         report = _aggregate_run_report(files, batch_reports)
 
-    print(json.dumps(report, indent=2, ensure_ascii=False))
+    _print_json(report)
 
     if args.output:
         _write_report(args.output, report)
@@ -1022,7 +1106,8 @@ def main():
     parser.add_argument(
         "--endpoint",
         default=DEFAULT_ENDPOINT,
-        help=f"AISC API endpoint (default: {DEFAULT_ENDPOINT})",
+        choices=tuple(ALLOWED_ENDPOINTS),
+        help=f"AISC API URL (default: {DEFAULT_ENDPOINT})",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")

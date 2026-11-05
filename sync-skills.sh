@@ -67,13 +67,13 @@ check_mcp() {
 
   if ! command -v codegraph &>/dev/null; then
     echo "[!] codegraph 未安装"
-    echo "    go install github.com/colbymchenry/codegraph@latest"
+    echo "    npm install -g @colbymchenry/codegraph"
     echo "    来源 https://github.com/colbymchenry/codegraph"
     changed=1
   fi
 
   if ! command -v node &>/dev/null; then
-    echo "[!] Node.js 未安装,sequential-thinking MCP 需要"
+    echo "[!] Node.js 未安装,sequential-thinking MCP 需要 Node.js 24+"
     changed=1
   fi
 
@@ -84,11 +84,8 @@ check_mcp() {
   fi
 
   if [ -f "$REPO/mcp/claude/mcp.json" ]; then
-    if ! diff -q "$REPO/mcp/claude/mcp.json" "$HOME/.claude/mcp.json" &>/dev/null; then
-      echo "[!] Claude MCP 配置已变更"
-      echo "    cp $REPO/mcp/claude/mcp.json $HOME/.claude/mcp.json"
-      changed=1
-    fi
+    echo "[!] Claude MCP 配置需合并到 ~/.claude.json 的 mcpServers 段"
+    changed=1
   fi
 
   if [ "$changed" -eq 0 ]; then

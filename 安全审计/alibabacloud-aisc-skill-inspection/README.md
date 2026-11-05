@@ -10,23 +10,35 @@
 
 ## 与官方版本同步
 
-本目录是基于上游 skill 的本地维护副本，已经包含本仓库自己的 `README.md`、`generate_report.py` 以及对 `SKILL.md` / 调用脚本的适配。官方后续更新时不要直接覆盖整个目录，否则会丢失本地报告生成和翻译能力。
+本目录基于上游 skill，另含本仓库自己的 `README.md`、`generate_report.py`、报告翻译能力和 evaluation fixtures。官方后续更新时不要直接覆盖整个目录，否则会丢失这些本地内容。
 
-建议按以下流程同步：
+用官方 raw 文件逐项比较，不要添加或 fetch Git remote：
 
 ```bash
-git remote add aisc-upstream https://github.com/aliyun/alibabacloud-aiops-skills.git
-git fetch aisc-upstream master
-git show aisc-upstream/master:skills/security/asc/alibabacloud-aisc-skill-inspection/SKILL.md > /tmp/aisc-upstream-SKILL.md
-git diff --no-index SKILL.md /tmp/aisc-upstream-SKILL.md || true
+base=https://raw.githubusercontent.com/aliyun/alibabacloud-aiops-skills/master/skills/security/asc/alibabacloud-aisc-skill-inspection
+curl -fsSL "$base/SKILL.md" -o /tmp/aisc-upstream-SKILL.md
+curl -fsSL "$base/scripts/skill_file_check.py" -o /tmp/aisc-upstream-skill_file_check.py
+curl -fsSL "$base/scripts/requirements.txt" -o /tmp/aisc-upstream-requirements.txt
+curl -fsSL "$base/references/manifest.json" -o /tmp/aisc-upstream-manifest.json
+curl -fsSL "$base/references/ram-policies.md" -o /tmp/aisc-upstream-ram-policies.md
+curl -fsSL "$base/references/result-interpretation-guide.md" -o /tmp/aisc-upstream-result-interpretation-guide.md
+curl -fsSL "$base/references/verification-method.md" -o /tmp/aisc-upstream-verification-method.md
+diff -u SKILL.md /tmp/aisc-upstream-SKILL.md || true
+diff -u scripts/skill_file_check.py /tmp/aisc-upstream-skill_file_check.py || true
+diff -u scripts/requirements.txt /tmp/aisc-upstream-requirements.txt || true
+diff -u references/manifest.json /tmp/aisc-upstream-manifest.json || true
+diff -u references/ram-policies.md /tmp/aisc-upstream-ram-policies.md || true
+diff -u references/result-interpretation-guide.md /tmp/aisc-upstream-result-interpretation-guide.md || true
+diff -u references/verification-method.md /tmp/aisc-upstream-verification-method.md || true
 ```
 
-如果已经添加过 `aisc-upstream`，只需执行 `git fetch aisc-upstream master`。对比后，将上游新增的行为约束、API 参数和错误处理手工合并到本地 `SKILL.md` 与 `scripts/skill_file_check.py`，保留 `generate_report.py`、本 README 及本地报告文件；合并后重新执行脚本校验，不要把上游文件盲目复制过来。
+将上游新增的行为约束、API 参数和错误处理合并到本地文档与调用脚本，保留 `generate_report.py`、本 README、报告文件和 evaluation fixtures；不要盲目覆盖整个目录。
 
 ## 适用场景
 
 - 用户要判断某个 Skill 包或单个 Skill 文件是否安全。
 - 用户提供一个或多个 Skill 下载链接，希望检测恶意代码、prompt injection、硬编码凭据、敏感信息或风险配置。
+- AISC 接收真实的 ZIP、TAR 或 GZIP 压缩 TAR 包；单独的 `SKILL.md` 文件不受支持。
 - 用户需要执行 AISC `CreateSkillFileCheck` / `ListSubTasks`。
 - 用户已经拿到 `rootTaskId` 或 `check-report.json`，需要继续轮询或解读报告。
 - 用户遇到权限、参数、限流、系统错误，需要定位失败原因。
@@ -56,6 +68,7 @@ git diff --no-index SKILL.md /tmp/aisc-upstream-SKILL.md || true
 - `references/ram-policies.md`：RAM 权限要求。
 - `references/result-interpretation-guide.md`：风险类型解释。
 - `references/verification-method.md`：结果校验方法。
+- `references/manifest.json`：AISC User-Agent 使用的 Skill 版本。
 - `check-report.json`：本地输出样例或最近一次扫描结果。
 
 ## 运行前提

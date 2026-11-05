@@ -1,0 +1,7 @@
+interface:
+  display_name: "阿里云拓扑更新"
+  short_description: "解析阿里云资源清单并更新指定环境的 PlantUML 拓扑图"
+  default_prompt: "使用 $aliyun-topology 根据阿里云资源清单更新指定环境的拓扑图。"
+
+policy:
+  allow_implicit_invocation: true

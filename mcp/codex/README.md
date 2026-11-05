@@ -2,16 +2,16 @@
 
 ## 还原步骤
 
-1. 安装 codegraph CLI
+1. 安装 CodeGraph CLI
 
    ```bash
-   go install github.com/colbymchenry/codegraph@latest
+   npm install -g @colbymchenry/codegraph
    ```
 
    来源: [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph)
    验证: `codegraph --version`
 
-2. 确保 Node.js 可用(npx 拉取 sequential-thinking)
+2. 确保 Node.js 24 或更高版本可用，供 `npx` 运行当前固定的 `sequential-thinking` 2.1.1
 
    ```bash
    node --version
@@ -23,5 +23,7 @@
 
 | 服务 | 来源 | 安装方式 |
 |------|------|----------|
-| codegraph | [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) | `go install` |
-| sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | `npx` 自动拉取 |
+| codegraph | [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) | `npm install -g @colbymchenry/codegraph` |
+| sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | `npx -y` 使用 2.1.1 |
+
+CodeGraph MCP 默认仅公开 `codegraph_explore`，它整合代码搜索、调用链与影响面信息。其它独立工具默认不公开；只有需要时再通过 `CODEGRAPH_MCP_TOOLS` 显式启用。

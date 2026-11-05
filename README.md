@@ -7,7 +7,7 @@
 ## 仓库结构
 
 ```
-安全审计/     skill-sentinel + audit-skills + alibabacloud-aisc-skill-inspection
+安全审计/     skill-sentinel + audit-skills + alibabacloud-aisc-skill-inspection + regional-asset-recon + reverse-engineering-router
 开发效率/     code-review-skill + daisyui + grill-me + to-spec + to-tickets
 内容处理/     stop-slop-cn
 基础设施/     aliyun-sls-sop
@@ -23,6 +23,8 @@ mcp/          MCP 配置备份
 | skill | 说明 | 来源 |
 |---|---|---|
 | `skill-sentinel` | Skill 安全扫描哨兵,在安装/加载前进行安全审计。基于 839 条正则规则,覆盖 10 大风险分类和 14 个 APT 攻击技术领域 | 自维护 |
+| `regional-asset-recon` | 汇总区域官方单位目录、归档可选本地材料，并在授权范围明确时关联 FOFA/Shodan 被动索引，输出带来源、归属和覆盖说明的 Excel 报告 | 自维护 |
+| `reverse-engineering-router` | 根据工件类型与分析目标，将逆向任务路由到已有技能和候选工具；不执行分析、安装或目标操作 | 自维护（参考 [reverse-skill](https://github.com/zhaoxuya520/reverse-skill)，未移植上游代码或内容） |
 | `alibabacloud-aisc-skill-inspection` | 调用阿里云 AISC `CreateSkillFileCheck` / `ListSubTasks` 对 Skill 下载链接做云端安全检测,支持提交、轮询、报告解读、权限/参数/限流/系统错误诊断。重点检测恶意代码、prompt injection、硬编码凭据、敏感信息和风险配置 | [aliyun/alibabacloud-aiops-skills](https://github.com/aliyun/alibabacloud-aiops-skills/tree/master/skills/security/asc/alibabacloud-aisc-skill-inspection) |
 | `audit-skills` | 多语言源码安全审计,支持 Java / .NET / PHP 源码/部署产物/反编译产物。涵盖路由提取、鉴权审计、组件漏洞扫描、调用链追踪、SQL 注入/XXE/文件读取/文件上传漏洞检测,含 BurpSuite 原始 HTTP 请求包证据输出 | [RuoJi6/audit-skills](https://github.com/RuoJi6/audit-skills/) |
 | Anthropic Cybersecurity Skills | 818 个网络安全子技能,覆盖防御、取证、威胁检测、云安全与经授权的红队工作流；来源含双用途内容,使用前须确认授权边界 | [mukul975/Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills)（导入提交 `54a798831d2266a3ca61ce68a7acb80b81160d57`） |
@@ -72,8 +74,8 @@ bash sync-skills.sh
 
 | 服务 | 来源 | 安装 |
 |------|------|------|
-| codegraph | [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) | `go install github.com/colbymchenry/codegraph@latest` |
-| sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | 需 Node.js,`npx` 自动拉取 |
+| codegraph | [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) | `npm install -g @colbymchenry/codegraph` |
+| sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | Node.js 24+,`npx -y` 使用 2.1.1 |
 
 ## 通过 Claude Code 使用
 
