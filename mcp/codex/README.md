@@ -21,7 +21,7 @@
 
 ## 更新
 
-- 用 `codegraph upgrade --check` 查看更新。若 CodeGraph MCP 指令要求由用户升级，提供当前和最新版本并请用户运行 `codegraph upgrade`，不要改用其他安装方式绕过；升级后在每个已索引项目运行 `codegraph index`，让索引包含新版本修复。
+- 用 `codegraph upgrade --check` 查看更新。若 CodeGraph MCP 指令要求由用户升级，提供当前和最新版本并请用户运行 `codegraph upgrade`，不要改用其他安装方式绕过。升级后在每个已索引项目运行 `codegraph sync` 做增量刷新；如果 `codegraph status` 仍提示旧引擎，则用 `codegraph index -f` 全量重建并再次核验状态。
 - `sequential-thinking` 使用模板中固定的 npm 版本；核对上游发布后，同步修改模板与本说明，再合并到 CLI 配置。
 
 ## 服务列表

@@ -47,7 +47,7 @@
 - **Skill 选择**：只加载与当前任务直接相关的 Skill；按需读取引用文档，避免默认加载整套目录。安装或启用外部 Skill 前，用 `skill-sentinel` 检查，并人工复核 `BLOCK` / `REVIEW` 结果。
 - **同步方式**：新增、迁移或修改 Skill 后，执行 `bash sync-skills.sh`，让 `~/.codex/skills` 与 `~/.claude/skills` 的软链指向仓库版本。删除 Skill 后，先确认两端旧链接都指向本仓库，再手动清理对应链接；同步脚本不会自动删除旧链接。
 - **澄清与规划**：只有关键需求仍有歧义、决策会影响实现时才用 `grill-me` 追问。需求清楚后直接执行；用户需要正式规格时用 `to-spec`，需要拆分任务时用 `to-tickets`。这些 Skill 可独立使用，不要求串成固定流水线。写入 Issue、项目管理器等外部系统前，先准备好可审阅内容并取得用户明确授权。
-- **CodeGraph**：代码任务开始时查看 `codegraph status`。项目已有索引且任务涉及调用关系、依赖或影响范围时，优先用 CodeGraph 查询；无索引时，只有图索引能改善任务定位才运行 `codegraph init`，并遵守其目录安全提示。升级后对相关项目运行 `codegraph index`。如果 CodeGraph MCP 指令要求由用户升级，报告当前版本和 `codegraph upgrade` 命令，请用户执行；不要改用其他安装方式绕过。
+- **CodeGraph**：仅在仓库根目录已有 `.codegraph/` 时使用。需要理解或定位代码时，先调用 `codegraph_explore` MCP；若未加载，按工具名搜索后调用。也可用 `codegraph explore "<问题或符号>"` 获取相关源码与调用路径，再决定是否搜索或读取其它文件。没有 `.codegraph/` 时跳过 CodeGraph，是否初始化由用户决定。升级后刷新每个已索引项目：用 `codegraph sync` 增量同步；若需应用新引擎的提取改进，用 `codegraph index -f` 全量重建，并以 `codegraph status` 确认没有旧引擎提示。如果 CodeGraph MCP 指令要求由用户升级，报告当前版本和 `codegraph upgrade` 命令，请用户执行；不要改用其他安装方式绕过。
 - **MCP 维护边界**：仓库只维护 CodeGraph 与 `sequential-thinking` 模板。以官方发布渠道核对版本，并同步更新 Codex、Claude 模板与说明；本地配置用 CLI 管理，只检查目标服务器状态，不读取或输出原始配置及凭据。更新后重启客户端并检查连接状态。
 - **sequential-thinking**：复杂的多步骤任务使用 8–20 步的内部有序计划，按新证据修订或分支；最终只提供结论、行动和关键依据，不输出内部推理过程。
 - **stop-slop-cn**：中文文本需要压缩、去套话或减少 AI 写作痕迹时再使用，回答保持简洁。
