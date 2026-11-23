@@ -5,7 +5,7 @@
 # 安装前提
 #   codegraph:    npm install -g @colbymchenry/codegraph
 #                 来源 https://github.com/colbymchenry/codegraph
-#   sequential-thinking: 需要 Node.js 24+ + npx,当前固定 npm 包 2.1.1
+#   sequential-thinking: 需要 Node.js 24+ + npx,当前固定 npm 包 2.2.0
 
 [mcp_servers.codegraph]
 type = "stdio"
@@ -17,4 +17,4 @@ approval_mode = "approve"
 
 [mcp_servers.sequential-thinking]
 command = "npx"
-args = ["-y", "@modelcontextprotocol/server-sequential-thinking@2.1.1"]
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking@2.2.0"]

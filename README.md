@@ -8,9 +8,9 @@
 
 ```
 安全审计/     skill-sentinel + audit-skills + alibabacloud-aisc-skill-inspection + regional-asset-recon + reverse-engineering-router
-开发效率/     code-review-skill + daisyui + grill-me + to-spec + to-tickets
+开发效率/     code-review-skill + daisyui + grill-me + to-spec + to-tickets + ponytail 系列
 内容处理/     stop-slop-cn
-基础设施/     aliyun-sls-sop
+基础设施/     aliyun-sls-sop + aliyun-topology
 mcp/          MCP 配置备份
 ```
 
@@ -38,6 +38,12 @@ mcp/          MCP 配置备份
 | `grill-me` | 对方案或设计做连续追问,沿决策树逐层收敛到共享理解。适合需求澄清、方案拷打、实现前对齐 | [mattpocock/skills: grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) |
 | `to-spec` | 将当前对话与代码库上下文收敛成 spec,不重新采访用户。适合需求已经讲清、需要沉淀规格说明时使用 | [mattpocock/skills: to-spec](https://github.com/mattpocock/skills/tree/main/skills/engineering/to-spec) |
 | `to-tickets` | 将 plan/spec/当前对话拆成 tracer-bullet tickets,并显式标注 blocking edges。适合把规格转成 agent 可执行工作项 | [mattpocock/skills: to-tickets](https://github.com/mattpocock/skills/tree/main/skills/engineering/to-tickets) |
+| `ponytail` | 编码任务的精简实现规则，优先复用现有代码、标准库和平台能力，避免不必要的抽象与依赖 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) |
+| `ponytail-review` | 审查变更中的正确性、安全性、负载、测试、性能与复杂度 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) |
+| `ponytail-audit` | 对整个仓库进行质量审计并按优先级列出发现 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) |
+| `ponytail-debt` | 汇总 `shortcut:` / `ponytail:` 注释中的已知简化及升级条件 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) |
+| `ponytail-gain` | 展示上游公布的 Ponytail 基准数据，不推算当前仓库收益 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) |
+| `ponytail-help` | Ponytail 模式和配套 Skill 的快速参考 | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) |
 
 ### 内容处理
 
@@ -50,6 +56,7 @@ mcp/          MCP 配置备份
 | skill | 说明 | 来源 |
 |---|---|---|
 | `aliyun-sls-sop` | 根据 CSV、CSV.GZ 与同级文档约束,生成或维护 SOP、README、overview、datasource、report template 等模块文档。同时支持从 SLS project 抽取 index/dashboard/alert 等资产 | 自维护 |
+| `aliyun-topology` | 根据用户提供的资源清单、控制台资料和现有拓扑，维护 PlantUML 拓扑图及可选架构说明；不调用阿里云 API | 自维护 |
 
 ## 同步到本地 Codex / Claude
 
@@ -75,7 +82,7 @@ bash sync-skills.sh
 | 服务 | 来源 | 安装 |
 |------|------|------|
 | codegraph | [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) | `npm install -g @colbymchenry/codegraph` |
-| sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | Node.js 24+,`npx -y` 使用 2.1.1 |
+| sequential-thinking | npm `@modelcontextprotocol/server-sequential-thinking` | Node.js 24+,`npx -y` 固定使用 2.2.0 |
 
 ## 通过 Claude Code 使用
 

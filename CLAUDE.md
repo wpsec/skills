@@ -44,9 +44,10 @@
 ## 5. Skill/MCP/文档
 
 - **共享关系**：本仓库是 Codex 与 Claude Code 共用的 skill 维护源。`AGENTS.md` 为 `CLAUDE.md` 的软链，更新 `CLAUDE.md` 即同时更新两者。
-- **同步方式**：新增、删除或迁移 skill 后，执行 `bash sync-skills.sh`，将本仓库中的 skill 软链同步到 `~/.codex/skills` 与 `~/.claude/skills`。
-- **MCP 维护边界**：当前仓库只维护 `codegraph` 与 `sequential-thinking` 的模板配置。
-- **推荐工作流**：需求或方案澄清优先走 `grill-me -> to-spec -> to-tickets`。`grill-me` 负责追问和收敛，`to-spec` 负责整理规格，`to-tickets` 负责拆成可执行 tickets。
-- **codegraph**：新项目首先检查是否有使用 codegraph，如果没有，先初始化，执行 `codegraph init` 命令。处理代码相关任务时，优先通过 CodeGraph 查询上下文（依赖关系、函数调用等），而不是盲目搜索。
-- **sequential-thinking**：复杂任务（多步骤、架构设计、问题诊断）必须拆解为有序步骤（8-20 步），允许修订和分支，最终仅输出行动计划及关键依据，不暴露推理链。
-- **stop-slop-cn**：杜绝一切冗余、客套、低价值填充内容，确保每条回复信息密度最大、直奔主题。
+- **Skill 选择**：只加载与当前任务直接相关的 Skill；按需读取引用文档，避免默认加载整套目录。安装或启用外部 Skill 前，用 `skill-sentinel` 检查，并人工复核 `BLOCK` / `REVIEW` 结果。
+- **同步方式**：新增、迁移或修改 Skill 后，执行 `bash sync-skills.sh`，让 `~/.codex/skills` 与 `~/.claude/skills` 的软链指向仓库版本。删除 Skill 后，先确认两端旧链接都指向本仓库，再手动清理对应链接；同步脚本不会自动删除旧链接。
+- **澄清与规划**：只有关键需求仍有歧义、决策会影响实现时才用 `grill-me` 追问。需求清楚后直接执行；用户需要正式规格时用 `to-spec`，需要拆分任务时用 `to-tickets`。这些 Skill 可独立使用，不要求串成固定流水线。写入 Issue、项目管理器等外部系统前，先准备好可审阅内容并取得用户明确授权。
+- **CodeGraph**：代码任务开始时查看 `codegraph status`。项目已有索引且任务涉及调用关系、依赖或影响范围时，优先用 CodeGraph 查询；无索引时，只有图索引能改善任务定位才运行 `codegraph init`，并遵守其目录安全提示。升级后对相关项目运行 `codegraph index`。
+- **MCP 维护边界**：仓库只维护 CodeGraph 与 `sequential-thinking` 模板。以官方发布渠道核对版本，并同步更新 Codex、Claude 模板与说明；本地配置用 CLI 管理，只检查目标服务器状态，不读取或输出原始配置及凭据。更新后重启客户端并检查连接状态。
+- **sequential-thinking**：复杂的多步骤任务使用 8–20 步的内部有序计划，按新证据修订或分支；最终只提供结论、行动和关键依据，不输出内部推理过程。
+- **stop-slop-cn**：中文文本需要压缩、去套话或减少 AI 写作痕迹时再使用，回答保持简洁。
